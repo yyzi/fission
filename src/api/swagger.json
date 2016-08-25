@@ -1,0 +1,298 @@
+{
+    "swagger": "2.0",
+
+    "info": {
+        "title": "Fission API",
+        "description": "Fission controller API: functions, triggers, and configuration",
+        "version": "0.1.0"
+    },
+
+    "produces": "application/json",
+
+    "paths": {
+        "/namespaces/{namespace}/functions": {
+            "get": {
+                "summary": "Get a list of functions",
+                "description": "Get a list of functions, based on the provided query.  An empty query lists all functions.",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "body",
+                        "required": false,
+                        "description": "A list of name-value pairs to match against function metadata.",
+                        "schema": {
+                            "$ref": "#/definitions/Labels"
+                        }
+                    },
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ]
+            },
+            
+            "post": {
+                "summary": "Create a new function",
+                "description": "Create a new function",
+                "parameters": [
+                    {
+                        "$ref": "#/definitions/Function"
+                    }
+                ]
+            }
+        },
+
+        "/namespaces/{namespace}/functions/{name}": {
+            "get": {
+                "summary": "Get a particular function",
+                "description": "Get the source and metadata of the named function",
+                "parameters": [
+                    { 
+                        "name": "name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "uid",
+                        "description": "Optional parameter to get a particular version of the named function",
+                        "in": "query",
+                        "type": "string",
+                        "required": false
+                    },
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "$ref": "#/definitions/Function"
+                        }
+                    },
+                    "404": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Replace a function",
+                "description": "",
+                "parameters": [
+                    {
+                        "$ref": "#/definitions/Function"
+                    },
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+
+        "/namespaces/{namespace}/httptriggers": {
+            "get": {
+                "summary": "Get a list of all HTTP triggers",
+                "description": "",
+                "parameters": [
+                ],
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a new HTTP trigger",
+                "description": "",
+                "parameters": {
+                    "$ref": "#/definitions/HTTPTrigger"
+                },
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+
+        "/namespaces/{namespace}/httptriggers/{uid}": {
+            "get": {
+                "summary": "Get a particular trigger",
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    },
+                    {
+                        "name": "uid",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a trigger",
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    },
+                    {
+                        "name": "uid",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Edit a trigger",
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "type": "string"
+                    },
+                    {
+                        "name": "uid",
+                        "in": "path",
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "#/definitions/HTTPTrigger",
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+
+
+    "definitions": {
+        "Metadata": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "A user-assigned name"
+                },
+                "uid": {
+                    "type": "string",
+                    "description": "Randomly generated identifier. Unique across namespaces, and never re-used."
+                },
+                "namespace": {
+                    "type": "string",
+                    "description": "Namespace -- names should be unique within a namespace."
+                }
+            }
+        },
+        "Labels": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "Function": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "$ref": "#/definitions/Metadata"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "environment": {
+                    "type": "string"
+                },
+                "labels": {
+                    "$ref": "#/definitions/Labels"
+                }
+            }
+        },
+        "HTTPTrigger": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "$ref": "#/definitions/Metadata"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Relative URL path.  Path templating is supported.  For example, if the url is /pets/{pet}/, then 'pet' is passed into the function context as a parameter."
+                },
+                "method": {
+                    "type": "string",
+                    "enum": [
+                        "get", "post", "put", "delete", "head", "options", "trace"
+                    ]
+                },
+                "function": {
+                    "type": "object",
+
+                    "description": "Defines the trigger's mapping to a function.  If name is provided but uid is not, the trigger invokes the current update of the named function.  If name and uid are both provided, the trigger invokes the given update of the named function.",
+                    "properties": {
+                        "metadata": {
+                            "$ref": "#/definitions/Metadata"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
