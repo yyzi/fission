@@ -1,12 +1,19 @@
-FROM ubuntu:16.04
+FROM alpine:3.4
 
-RUN apt-get update -y
-RUN apt-get install -y python3 python3-pip python3-dev build-essential
+RUN echo "@main http://dl-4.alpinelinux.org/alpine/v3.4/main" >> /etc/apk/repositories \
+  && apk add --update \
+              python3 \
+	      python3-dev \
+#	      build-base \
+  && python3 -m ensurepip \
+  && pip3 install --upgrade pip \
+  && rm /var/cache/apk/*
 
-COPY . /app
-WORKDIR /app
-RUN pip3 install -r requirements.txt
+ADD . /app
 
-ENTRYPOINT ["python3"]
-CMD ["server.py"]
+RUN pip3 install -r /app/requirements.txt
 
+RUN cd /usr/bin \
+  && ln -sf python3 python
+
+ENTRYPOINT ["python", "./app/server.py"]
