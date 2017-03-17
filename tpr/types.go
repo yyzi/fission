@@ -17,7 +17,7 @@ limitations under the License.
 package tpr
 
 import (
-	"encoding/json"
+	//	"encoding/json"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/meta"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
@@ -36,16 +36,16 @@ import (
 
 type (
 	Package struct {
-		Literal         []byte
-		URL             string
-		PackageStoreRef string
+		Literal         []byte `json:"literal"`
+		URL             string `json:"url"`
+		PackageStoreRef string `json:"packagestoreref"`
 
-		entryPoint string // optional
+		entryPoint string `json:"entrypoint"`
 	}
 	FunctionSpec struct {
-		Source         Package
-		Deployment     Package
-		EnvironmentUid string
+		Source         Package `json:"source"`
+		Deployment     Package `json:"deployment"`
+		EnvironmentUid string  `json:"environmentuid"`
 	}
 	Function struct {
 		unversioned.TypeMeta `json:",inline"`
@@ -61,17 +61,27 @@ type (
 
 	// environment
 	Runtime struct {
-		Image string
+		Image string `json:"image"`
 	}
 	Builder struct {
-		Image   string
-		Command string
+		Image   string `json:"image"`
+		Command string `json:"command"`
 	}
 	EnvironmentSpec struct {
-		Runtime
-		Builder
-		FilenameExtensions []string
-		LanguageName       []string
+		// Environment version
+		Version string `json:"version"`
+
+		// Runtime container image etc.; required
+		Runtime `json:"runtime"`
+
+		// Optional
+		Builder `json:"builder"`
+
+		// FilenameExtensions can be used by CLI/UI tooling
+		// (e.g. auto-detect env by filename, syntax
+		// highlighting etc.)  It isn't enforced by fission
+		// itself in any way.
+		FilenameExtensions []string `json:"filenameextensions"`
 	}
 	Environment struct {
 		unversioned.TypeMeta `json:",inline"`
@@ -85,46 +95,50 @@ type (
 		Items []Environment `json:"items"`
 	}
 
-	// HTTP Triggers
+	// HTTP Triggers.  (Something in the TPR reflection stuff wants
+	// it to be spelled "Httptrigger" not "HTTPTrigger" or even
+	// "HttpTrigger".  Bleh.)
 	FunctionReference struct {
-		// Selector selects a function by labels.  Functions have auto-assigned labels by Fission.
-		Selector map[string]string
+		// Selector selects a function by labels.  Functions
+		// have auto-assigned labels in addition to user
+		// labels.
+		Selector map[string]string `json:"selector"`
 	}
-	HTTPTriggerSpec struct {
-		Host        string
-		RelativeURL string
-		Method      string
+	HttptriggerSpec struct {
+		Host        string `json:"host"`
+		RelativeURL string `json:"relativeurl"`
+		Method      string `json:"method"`
 		FunctionReference
 	}
-	HTTPTrigger struct {
+	Httptrigger struct {
 		unversioned.TypeMeta `json:",inline"`
 		Metadata             api.ObjectMeta  `json:"metadata"`
-		Spec                 HTTPTriggerSpec `json:"spec"`
+		Spec                 HttptriggerSpec `json:"spec"`
 	}
-	HTTPTriggerList struct {
+	HttptriggerList struct {
 		unversioned.TypeMeta `json:",inline"`
 		Metadata             unversioned.ListMeta `json:"metadata"`
 
-		Items []HTTPTrigger `json:"items"`
+		Items []Httptrigger `json:"items"`
 	}
 
 	// Kubernetes Watches as function triggers
-	KubernetesWatchTriggerSpec struct {
-		Namespace     string
-		Type          string
-		LabelSelector map[string]string
-		FunctionReference
+	KuberneteswatchtriggerSpec struct {
+		Namespace         string            `json:"namespace"`
+		Type              string            `json:"type"`
+		LabelSelector     map[string]string `json:"labelselector"`
+		FunctionReference `json:"functionref"`
 	}
-	KubernetesWatchTrigger struct {
+	Kuberneteswatchtrigger struct {
 		unversioned.TypeMeta `json:",inline"`
 		Metadata             api.ObjectMeta             `json:"metadata"`
-		Spec                 KubernetesWatchTriggerSpec `json:"spec"`
+		Spec                 KuberneteswatchtriggerSpec `json:"spec"`
 	}
-	KubernetesWatchTriggerList struct {
+	KuberneteswatchtriggerList struct {
 		unversioned.TypeMeta `json:",inline"`
 		Metadata             unversioned.ListMeta `json:"metadata"`
 
-		Items []KubernetesWatchTrigger `json:"items"`
+		Items []Kuberneteswatchtrigger `json:"items"`
 	}
 )
 
@@ -137,81 +151,59 @@ type (
 // And each list TPR type needs:
 //   GetListMeta (to satisfy the ListMetaAccessor interface)
 
-func (f Function) GetObjectKind() unversioned.ObjectKind {
+func (f *Function) GetObjectKind() unversioned.ObjectKind {
 	return &f.TypeMeta
 }
 func (e *Environment) GetObjectKind() unversioned.ObjectKind {
 	return &e.TypeMeta
 }
-func (ht *HTTPTrigger) GetObjectKind() unversioned.ObjectKind {
+func (ht *Httptrigger) GetObjectKind() unversioned.ObjectKind {
 	return &ht.TypeMeta
 }
-func (w *KubernetesWatchTrigger) GetObjectKind() unversioned.ObjectKind {
+func (w *Kuberneteswatchtrigger) GetObjectKind() unversioned.ObjectKind {
 	return &w.TypeMeta
 }
 
-func (f Function) GetObjectMeta() meta.Object {
+func (f *Function) GetObjectMeta() meta.Object {
 	return &f.Metadata
 }
 func (e *Environment) GetObjectMeta() meta.Object {
 	return &e.Metadata
 }
-func (ht *HTTPTrigger) GetObjectMeta() meta.Object {
+func (ht *Httptrigger) GetObjectMeta() meta.Object {
 	return &ht.Metadata
 }
-func (w *KubernetesWatchTrigger) GetObjectMeta() meta.Object {
+func (w *Kuberneteswatchtrigger) GetObjectMeta() meta.Object {
 	return &w.Metadata
 }
 
-func (fl FunctionList) GetObjectKind() unversioned.ObjectKind {
+func (fl *FunctionList) GetObjectKind() unversioned.ObjectKind {
 	return &fl.TypeMeta
 }
 func (el *EnvironmentList) GetObjectKind() unversioned.ObjectKind {
 	return &el.TypeMeta
 }
-func (hl *HTTPTriggerList) GetObjectKind() unversioned.ObjectKind {
+func (hl *HttptriggerList) GetObjectKind() unversioned.ObjectKind {
 	return &hl.TypeMeta
 }
-func (wl *KubernetesWatchTriggerList) GetObjectKind() unversioned.ObjectKind {
+func (wl *KuberneteswatchtriggerList) GetObjectKind() unversioned.ObjectKind {
 	return &wl.TypeMeta
 }
 
-func (fl FunctionList) GetListMeta() unversioned.List {
+func (fl *FunctionList) GetListMeta() unversioned.List {
 	return &fl.Metadata
 }
 func (el *EnvironmentList) GetListMeta() unversioned.List {
 	return &el.Metadata
 }
-func (hl *HTTPTriggerList) GetListMeta() unversioned.List {
+func (hl *HttptriggerList) GetListMeta() unversioned.List {
 	return &hl.Metadata
 }
-func (wl *KubernetesWatchTriggerList) GetListMeta() unversioned.List {
+func (wl *KuberneteswatchtriggerList) GetListMeta() unversioned.List {
 	return &wl.Metadata
 }
 
-// XXX do we need the TPR unmarshalling workaround?
-
-type FunctionListCopy FunctionList
-type FunctionCopy Function
-
-func (e *Function) UnmarshalJSON(data []byte) error {
-	tmp := FunctionCopy{}
-	err := json.Unmarshal(data, &tmp)
-	if err != nil {
-		return err
-	}
-	tmp2 := Function(tmp)
-	*e = tmp2
-	return nil
-}
-
-func (el *FunctionList) UnmarshalJSON(data []byte) error {
-	tmp := FunctionListCopy{}
-	err := json.Unmarshal(data, &tmp)
-	if err != nil {
-		return err
-	}
-	tmp2 := FunctionList(tmp)
-	*el = tmp2
-	return nil
-}
+// In the client-go TPR example, UnmarshalJSON is defined here for the
+// singular and list types.  That's supposed to be a workaround for
+// some ugorji bug.  But we don't seem to need it, and all our tests
+// pass without it, so we don't define any UnmarshalJSON methods.

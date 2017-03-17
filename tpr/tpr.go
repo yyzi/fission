@@ -95,7 +95,7 @@ func EnsureFissionTPRs(clientset *kubernetes.Clientset) error {
 		},
 		{
 			ObjectMeta: v1.ObjectMeta{
-				Name: "watchtrigger.fission.io",
+				Name: "kuberneteswatchtrigger.fission.io",
 			},
 			Versions: []v1beta1.APIVersion{
 				{Name: "v1"},
@@ -146,15 +146,15 @@ func configureClient(config *rest.Config) {
 			)
 			scheme.AddKnownTypes(
 				groupversion,
-				&HTTPTrigger{},
-				&HTTPTriggerList{},
+				&Httptrigger{},
+				&HttptriggerList{},
 				&api.ListOptions{},
 				&api.DeleteOptions{},
 			)
 			scheme.AddKnownTypes(
 				groupversion,
-				&KubernetesWatchTrigger{},
-				&KubernetesWatchTriggerList{},
+				&Kuberneteswatchtrigger{},
+				&KuberneteswatchtriggerList{},
 				&api.ListOptions{},
 				&api.DeleteOptions{},
 			)

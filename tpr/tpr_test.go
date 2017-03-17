@@ -101,6 +101,7 @@ func functionTests(tprClient *rest.RESTClient) {
 	panicIf(err)
 	defer fi.Delete(f.Metadata.Name, nil)
 
+	// assert that we get a watch event for the new function
 	recvd := false
 	select {
 	case <-time.NewTimer(1 * time.Second).C:
@@ -114,6 +115,281 @@ func functionTests(tprClient *rest.RESTClient) {
 		}
 		if wf.Spec.EnvironmentUid != function.Spec.EnvironmentUid {
 			log.Panicf("Bad object from watch: %#v", wf)
+		}
+		log.Printf("watch event took %v", time.Now().Sub(start))
+		recvd = true
+	}
+
+}
+
+func environmentTests(tprClient *rest.RESTClient) {
+	// sample environment object
+	environment := &Environment{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Environment",
+			APIVersion: "fission.io/v1",
+		},
+		Metadata: api.ObjectMeta{
+			Name: "hello",
+		},
+		Spec: EnvironmentSpec{
+			Runtime: Runtime{
+				Image: "xxx",
+			},
+			Builder: Builder{
+				Image:   "yyy",
+				Command: "zzz",
+			},
+			FilenameExtensions: []string{"js"},
+		},
+	}
+
+	// Test environment CRUD
+	ei := MakeEnvironmentInterface(tprClient, api.NamespaceDefault)
+
+	// cleanup from old crashed tests, ignore errors
+	ei.Delete(environment.Metadata.Name, nil)
+
+	// create
+	e, err := ei.Create(environment)
+	panicIf(err)
+	if e.Metadata.Name != environment.Metadata.Name {
+		log.Panicf("Bad result from create: %v", e)
+	}
+
+	// read
+	e, err = ei.Get(environment.Metadata.Name)
+	panicIf(err)
+	if len(e.Spec.Runtime.Image) != len(environment.Spec.Runtime.Image) {
+		log.Panicf("Bad result from Get: %#v", e)
+	}
+
+	// update
+	environment.Spec.Runtime.Image = "www"
+	e, err = ei.Update(environment)
+	panicIf(err)
+
+	// list
+	el, err := ei.List(api.ListOptions{})
+	panicIf(err)
+	if len(el.Items) != 1 {
+		log.Panicf("wrong count from list: %v", el)
+	}
+	if el.Items[0].Spec.Runtime.Image != environment.Spec.Runtime.Image {
+		log.Panicf("bad object from list: %v", el.Items[0])
+	}
+
+	// delete
+	err = ei.Delete(e.Metadata.Name, nil)
+	panicIf(err)
+
+	// start a watch
+	wi, err := ei.Watch(api.ListOptions{})
+	panicIf(err)
+
+	start := time.Now()
+	e, err = ei.Create(environment)
+	panicIf(err)
+	defer ei.Delete(e.Metadata.Name, nil)
+
+	// assert that we get a watch event for the new environment
+	recvd := false
+	select {
+	case <-time.NewTimer(1 * time.Second).C:
+		if !recvd {
+			log.Panicf("Didn't get watch event")
+		}
+	case ev := <-wi.ResultChan():
+		obj, ok := ev.Object.(*Environment)
+		if !ok {
+			log.Panicf("Can't cast to Environment")
+		}
+		if obj.Spec.Runtime.Image != environment.Spec.Runtime.Image {
+			log.Panicf("Bad object from watch: %#v", obj)
+		}
+		log.Printf("watch event took %v", time.Now().Sub(start))
+		recvd = true
+	}
+
+}
+
+func httpTriggerTests(tprClient *rest.RESTClient) {
+	// sample httpTrigger object
+	httpTrigger := &Httptrigger{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Httptrigger",
+			APIVersion: "fission.io/v1",
+		},
+		Metadata: api.ObjectMeta{
+			Name: "hello",
+		},
+		Spec: HttptriggerSpec{
+			RelativeURL: "/hi",
+			Method:      "GET",
+			FunctionReference: FunctionReference{
+				Selector: map[string]string{
+					"name": "hello",
+					"uid":  "42",
+				},
+			},
+		},
+	}
+
+	// Test httpTrigger CRUD
+	ei := MakeHttptriggerInterface(tprClient, api.NamespaceDefault)
+
+	// cleanup from old crashed tests, ignore errors
+	ei.Delete(httpTrigger.Metadata.Name, nil)
+
+	// create
+	e, err := ei.Create(httpTrigger)
+	panicIf(err)
+	if e.Metadata.Name != httpTrigger.Metadata.Name {
+		log.Panicf("Bad result from create: %v", e)
+	}
+
+	// read
+	e, err = ei.Get(httpTrigger.Metadata.Name)
+	panicIf(err)
+	if len(e.Spec.Method) != len(httpTrigger.Spec.Method) {
+		log.Panicf("Bad result from Get: %#v", e)
+	}
+
+	// update
+	httpTrigger.Spec.Method = "POST"
+	e, err = ei.Update(httpTrigger)
+	panicIf(err)
+
+	// list
+	el, err := ei.List(api.ListOptions{})
+	panicIf(err)
+	if len(el.Items) != 1 {
+		log.Panicf("wrong count from list: %v", el)
+	}
+	if el.Items[0].Spec.Method != httpTrigger.Spec.Method {
+		log.Panicf("bad object from list: %v", el.Items[0])
+	}
+
+	// delete
+	err = ei.Delete(e.Metadata.Name, nil)
+	panicIf(err)
+
+	// start a watch
+	wi, err := ei.Watch(api.ListOptions{})
+	panicIf(err)
+
+	start := time.Now()
+	e, err = ei.Create(httpTrigger)
+	panicIf(err)
+	defer ei.Delete(e.Metadata.Name, nil)
+
+	// assert that we get a watch event for the new httpTrigger
+	recvd := false
+	select {
+	case <-time.NewTimer(1 * time.Second).C:
+		if !recvd {
+			log.Panicf("Didn't get watch event")
+		}
+	case ev := <-wi.ResultChan():
+		obj, ok := ev.Object.(*Httptrigger)
+		if !ok {
+			log.Panicf("Can't cast to Httptrigger")
+		}
+		if obj.Spec.Method != httpTrigger.Spec.Method {
+			log.Panicf("Bad object from watch: %#v", obj)
+		}
+		log.Printf("watch event took %v", time.Now().Sub(start))
+		recvd = true
+	}
+
+}
+
+func kubernetesWatchTriggerTests(tprClient *rest.RESTClient) {
+	// sample kubernetesWatchTrigger object
+	kubernetesWatchTrigger := &Kuberneteswatchtrigger{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Kuberneteswatchtrigger",
+			APIVersion: "fission.io/v1",
+		},
+		Metadata: api.ObjectMeta{
+			Name: "hello",
+		},
+		Spec: KuberneteswatchtriggerSpec{
+			Namespace: "foo",
+			Type:      "pod",
+			LabelSelector: map[string]string{
+				"x": "y",
+			},
+			FunctionReference: FunctionReference{
+				Selector: map[string]string{
+					"name": "foo",
+				},
+			},
+		},
+	}
+
+	// Test kubernetesWatchTrigger CRUD
+	ei := MakeKuberneteswatchtriggerInterface(tprClient, api.NamespaceDefault)
+
+	// cleanup from old crashed tests, ignore errors
+	ei.Delete(kubernetesWatchTrigger.Metadata.Name, nil)
+
+	// create
+	e, err := ei.Create(kubernetesWatchTrigger)
+	panicIf(err)
+	if e.Metadata.Name != kubernetesWatchTrigger.Metadata.Name {
+		log.Panicf("Bad result from create: %v", e)
+	}
+
+	// read
+	e, err = ei.Get(kubernetesWatchTrigger.Metadata.Name)
+	panicIf(err)
+	if e.Spec.Type != kubernetesWatchTrigger.Spec.Type {
+		log.Panicf("Bad result from Get: %#v", e)
+	}
+
+	// update
+	kubernetesWatchTrigger.Spec.Type = "service"
+	e, err = ei.Update(kubernetesWatchTrigger)
+	panicIf(err)
+
+	// list
+	el, err := ei.List(api.ListOptions{})
+	panicIf(err)
+	if len(el.Items) != 1 {
+		log.Panicf("wrong count from list: %v", el)
+	}
+	if el.Items[0].Spec.Type != kubernetesWatchTrigger.Spec.Type {
+		log.Panicf("bad object from list: %v", el.Items[0])
+	}
+
+	// delete
+	err = ei.Delete(e.Metadata.Name, nil)
+	panicIf(err)
+
+	// start a watch
+	wi, err := ei.Watch(api.ListOptions{})
+	panicIf(err)
+
+	start := time.Now()
+	e, err = ei.Create(kubernetesWatchTrigger)
+	panicIf(err)
+	defer ei.Delete(e.Metadata.Name, nil)
+
+	// assert that we get a watch event for the new kubernetesWatchTrigger
+	recvd := false
+	select {
+	case <-time.NewTimer(1 * time.Second).C:
+		if !recvd {
+			log.Panicf("Didn't get watch event")
+		}
+	case ev := <-wi.ResultChan():
+		obj, ok := ev.Object.(*Kuberneteswatchtrigger)
+		if !ok {
+			log.Panicf("Can't cast to Kuberneteswatchtrigger")
+		}
+		if obj.Spec.Type != kubernetesWatchTrigger.Spec.Type {
+			log.Panicf("Bad object from watch: %#v", obj)
 		}
 		log.Printf("watch event took %v", time.Now().Sub(start))
 		recvd = true
@@ -145,5 +421,8 @@ func TestTpr(t *testing.T) {
 	tprClient, err := getTprClient(config)
 	panicIf(err)
 
+	environmentTests(tprClient)
+	httpTriggerTests(tprClient)
+	kubernetesWatchTriggerTests(tprClient)
 	functionTests(tprClient)
 }

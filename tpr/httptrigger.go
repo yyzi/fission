@@ -23,12 +23,12 @@ import (
 )
 
 type (
-	HTTPTriggerInterface interface {
-		Create(*HTTPTrigger) (*HTTPTrigger, error)
-		Get(name string) (*HTTPTrigger, error)
-		Update(*HTTPTrigger) (*HTTPTrigger, error)
+	HttptriggerInterface interface {
+		Create(*Httptrigger) (*Httptrigger, error)
+		Get(name string) (*Httptrigger, error)
+		Update(*Httptrigger) (*Httptrigger, error)
 		Delete(name string, options *api.DeleteOptions) error
-		List(opts api.ListOptions) (*HTTPTriggerList, error)
+		List(opts api.ListOptions) (*HttptriggerList, error)
 		Watch(opts api.ListOptions) (watch.Interface, error)
 	}
 
@@ -38,15 +38,15 @@ type (
 	}
 )
 
-func MakeHTTPTriggerInterface(tprClient *rest.RESTClient, namespace string) HTTPTriggerInterface {
+func MakeHttptriggerInterface(tprClient *rest.RESTClient, namespace string) HttptriggerInterface {
 	return &httpTriggerClient{
 		client:    tprClient,
 		namespace: namespace,
 	}
 }
 
-func (c *httpTriggerClient) Create(obj *HTTPTrigger) (*HTTPTrigger, error) {
-	var result HTTPTrigger
+func (c *httpTriggerClient) Create(obj *Httptrigger) (*Httptrigger, error) {
+	var result Httptrigger
 	err := c.client.Post().
 		Resource("httptriggers").
 		Namespace(c.namespace).
@@ -58,8 +58,8 @@ func (c *httpTriggerClient) Create(obj *HTTPTrigger) (*HTTPTrigger, error) {
 	return &result, nil
 }
 
-func (c *httpTriggerClient) Get(name string) (*HTTPTrigger, error) {
-	var result HTTPTrigger
+func (c *httpTriggerClient) Get(name string) (*Httptrigger, error) {
+	var result Httptrigger
 	err := c.client.Get().
 		Resource("httptriggers").
 		Namespace(c.namespace).
@@ -71,8 +71,8 @@ func (c *httpTriggerClient) Get(name string) (*HTTPTrigger, error) {
 	return &result, nil
 }
 
-func (c *httpTriggerClient) Update(obj *HTTPTrigger) (*HTTPTrigger, error) {
-	var result HTTPTrigger
+func (c *httpTriggerClient) Update(obj *Httptrigger) (*Httptrigger, error) {
+	var result Httptrigger
 	err := c.client.Put().
 		Resource("httptriggers").
 		Namespace(c.namespace).
@@ -95,8 +95,8 @@ func (c *httpTriggerClient) Delete(name string, opts *api.DeleteOptions) error {
 		Error()
 }
 
-func (c *httpTriggerClient) List(opts api.ListOptions) (*HTTPTriggerList, error) {
-	var result HTTPTriggerList
+func (c *httpTriggerClient) List(opts api.ListOptions) (*HttptriggerList, error) {
+	var result HttptriggerList
 	err := c.client.Get().
 		Namespace(c.namespace).
 		Resource("httptriggers").
