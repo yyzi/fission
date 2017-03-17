@@ -23,12 +23,12 @@ import (
 )
 
 type (
-	KubernetesWatchTriggerInterface interface {
-		Create(*KubernetesWatchTrigger) (*KubernetesWatchTrigger, error)
-		Get(name string) (*KubernetesWatchTrigger, error)
-		Update(*KubernetesWatchTrigger) (*KubernetesWatchTrigger, error)
+	KuberneteswatchtriggerInterface interface {
+		Create(*Kuberneteswatchtrigger) (*Kuberneteswatchtrigger, error)
+		Get(name string) (*Kuberneteswatchtrigger, error)
+		Update(*Kuberneteswatchtrigger) (*Kuberneteswatchtrigger, error)
 		Delete(name string, options *api.DeleteOptions) error
-		List(opts api.ListOptions) (*KubernetesWatchTriggerList, error)
+		List(opts api.ListOptions) (*KuberneteswatchtriggerList, error)
 		Watch(opts api.ListOptions) (watch.Interface, error)
 	}
 
@@ -38,15 +38,15 @@ type (
 	}
 )
 
-func MakeKubernetesWatchTriggerInterface(tprClient *rest.RESTClient, namespace string) KubernetesWatchTriggerInterface {
+func MakeKuberneteswatchtriggerInterface(tprClient *rest.RESTClient, namespace string) KuberneteswatchtriggerInterface {
 	return &kubernetesWatchTriggerClient{
 		client:    tprClient,
 		namespace: namespace,
 	}
 }
 
-func (c *kubernetesWatchTriggerClient) Create(obj *KubernetesWatchTrigger) (*KubernetesWatchTrigger, error) {
-	var result KubernetesWatchTrigger
+func (c *kubernetesWatchTriggerClient) Create(obj *Kuberneteswatchtrigger) (*Kuberneteswatchtrigger, error) {
+	var result Kuberneteswatchtrigger
 	err := c.client.Post().
 		Resource("kuberneteswatchtriggers").
 		Namespace(c.namespace).
@@ -58,8 +58,8 @@ func (c *kubernetesWatchTriggerClient) Create(obj *KubernetesWatchTrigger) (*Kub
 	return &result, nil
 }
 
-func (c *kubernetesWatchTriggerClient) Get(name string) (*KubernetesWatchTrigger, error) {
-	var result KubernetesWatchTrigger
+func (c *kubernetesWatchTriggerClient) Get(name string) (*Kuberneteswatchtrigger, error) {
+	var result Kuberneteswatchtrigger
 	err := c.client.Get().
 		Resource("kuberneteswatchtriggers").
 		Namespace(c.namespace).
@@ -71,8 +71,8 @@ func (c *kubernetesWatchTriggerClient) Get(name string) (*KubernetesWatchTrigger
 	return &result, nil
 }
 
-func (c *kubernetesWatchTriggerClient) Update(obj *KubernetesWatchTrigger) (*KubernetesWatchTrigger, error) {
-	var result KubernetesWatchTrigger
+func (c *kubernetesWatchTriggerClient) Update(obj *Kuberneteswatchtrigger) (*Kuberneteswatchtrigger, error) {
+	var result Kuberneteswatchtrigger
 	err := c.client.Put().
 		Resource("kuberneteswatchtriggers").
 		Namespace(c.namespace).
@@ -95,8 +95,8 @@ func (c *kubernetesWatchTriggerClient) Delete(name string, opts *api.DeleteOptio
 		Error()
 }
 
-func (c *kubernetesWatchTriggerClient) List(opts api.ListOptions) (*KubernetesWatchTriggerList, error) {
-	var result KubernetesWatchTriggerList
+func (c *kubernetesWatchTriggerClient) List(opts api.ListOptions) (*KuberneteswatchtriggerList, error) {
+	var result KuberneteswatchtriggerList
 	err := c.client.Get().
 		Namespace(c.namespace).
 		Resource("kuberneteswatchtriggers").
