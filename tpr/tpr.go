@@ -26,9 +26,6 @@ import (
 	"k8s.io/client-go/1.5/pkg/runtime"
 	"k8s.io/client-go/1.5/pkg/runtime/serializer"
 	"k8s.io/client-go/1.5/rest"
-	//"k8s.io/client-go/pkg/api/v1"
-	//"k8s.io/client-go/rest"
-	//"k8s.io/client-go/tools/clientcmd"
 )
 
 // Get a kubernetes client using the pod's service account.

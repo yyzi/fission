@@ -421,8 +421,8 @@ func TestTpr(t *testing.T) {
 	tprClient, err := getTprClient(config)
 	panicIf(err)
 
+	functionTests(tprClient)
 	environmentTests(tprClient)
 	httpTriggerTests(tprClient)
 	kubernetesWatchTriggerTests(tprClient)
-	functionTests(tprClient)
 }
