@@ -17,7 +17,6 @@ limitations under the License.
 package tpr
 
 import (
-	//	"encoding/json"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/meta"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
@@ -25,21 +24,29 @@ import (
 
 //
 // To add a Fission TPR type:
-//   0. Create a "spec" type, for everything in the type except metadata
-//   1. Create the type with metadata + the spec
-//   2. Create a list type (for example see FunctionList and Function, below)
-//   3. Add methods at the bottom of this file for satisfying Object and List interfaces
-//   4. Add the type to configureClient in tpr.go
-//   5. Add the type to EnsureFissionTPRs in tpr.go
-//   6. Add tests to tpr_test.go
+//   1. Create a "spec" type, for everything in the type except metadata
+//   2. Create the type with metadata + the spec
+//   3. Create a list type (for example see FunctionList and Function, below)
+//   4. Add methods at the bottom of this file for satisfying Object and List interfaces
+//   5. Add the type to configureClient in tpr.go
+//   6. Add the type to EnsureFissionTPRs in tpr.go
+//   7. Add tests to tpr_test.go
 //
 
 type (
+	// Function
+
+	// Package contains or references a collection of source or
+	// binary files.
 	Package struct {
-		Literal         []byte `json:"literal"`
+		// Literal can be used for encoding packages below a certain size.
+		Literal []byte `json:"literal"`
+
+		// URL can be used to reference
 		URL             string `json:"url"`
 		PackageStoreRef string `json:"packagestoreref"`
 
+		// Optional
 		entryPoint string `json:"entrypoint"`
 	}
 	FunctionSpec struct {
@@ -59,7 +66,7 @@ type (
 		Items []Function `json:"items"`
 	}
 
-	// environment
+	// Environment
 	Runtime struct {
 		Image string `json:"image"`
 	}
