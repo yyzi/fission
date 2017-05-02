@@ -32,6 +32,6 @@ func (tt TimeTrigger) Key() string {
 	return tt.Metadata.Name
 }
 
-func (w Watch) Key() string {
+func (w KubernetesWatchTrigger) Key() string {
 	return w.Metadata.Name
 }
