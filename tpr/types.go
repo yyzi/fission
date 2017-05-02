@@ -20,6 +20,8 @@ import (
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/meta"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
+
+	"github.com/fission/fission"
 )
 
 //
@@ -34,30 +36,10 @@ import (
 //
 
 type (
-	// Function
-
-	// Package contains or references a collection of source or
-	// binary files.
-	Package struct {
-		// Literal can be used for encoding packages below a certain size.
-		Literal []byte `json:"literal"`
-
-		// URL can be used to reference
-		URL             string `json:"url"`
-		PackageStoreRef string `json:"packagestoreref"`
-
-		// Optional
-		entryPoint string `json:"entrypoint"`
-	}
-	FunctionSpec struct {
-		Source         Package `json:"source"`
-		Deployment     Package `json:"deployment"`
-		EnvironmentUid string  `json:"environmentuid"`
-	}
 	Function struct {
 		unversioned.TypeMeta `json:",inline"`
-		Metadata             api.ObjectMeta `json:"metadata"`
-		Spec                 FunctionSpec   `json:"spec"`
+		Metadata             api.ObjectMeta       `json:"metadata"`
+		Spec                 fission.FunctionSpec `json:"spec"`
 	}
 	FunctionList struct {
 		unversioned.TypeMeta `json:",inline"`
@@ -66,34 +48,10 @@ type (
 		Items []Function `json:"items"`
 	}
 
-	// Environment
-	Runtime struct {
-		Image string `json:"image"`
-	}
-	Builder struct {
-		Image   string `json:"image"`
-		Command string `json:"command"`
-	}
-	EnvironmentSpec struct {
-		// Environment version
-		Version string `json:"version"`
-
-		// Runtime container image etc.; required
-		Runtime `json:"runtime"`
-
-		// Optional
-		Builder `json:"builder"`
-
-		// FilenameExtensions can be used by CLI/UI tooling
-		// (e.g. auto-detect env by filename, syntax
-		// highlighting etc.)  It isn't enforced by fission
-		// itself in any way.
-		FilenameExtensions []string `json:"filenameextensions"`
-	}
 	Environment struct {
 		unversioned.TypeMeta `json:",inline"`
-		Metadata             api.ObjectMeta  `json:"metadata"`
-		Spec                 EnvironmentSpec `json:"spec"`
+		Metadata             api.ObjectMeta          `json:"metadata"`
+		Spec                 fission.EnvironmentSpec `json:"spec"`
 	}
 	EnvironmentList struct {
 		unversioned.TypeMeta `json:",inline"`
@@ -105,22 +63,10 @@ type (
 	// HTTP Triggers.  (Something in the TPR reflection stuff wants
 	// it to be spelled "Httptrigger" not "HTTPTrigger" or even
 	// "HttpTrigger".  Bleh.)
-	FunctionReference struct {
-		// Selector selects a function by labels.  Functions
-		// have auto-assigned labels in addition to user
-		// labels.
-		Selector map[string]string `json:"selector"`
-	}
-	HttptriggerSpec struct {
-		Host        string `json:"host"`
-		RelativeURL string `json:"relativeurl"`
-		Method      string `json:"method"`
-		FunctionReference
-	}
 	Httptrigger struct {
 		unversioned.TypeMeta `json:",inline"`
-		Metadata             api.ObjectMeta  `json:"metadata"`
-		Spec                 HttptriggerSpec `json:"spec"`
+		Metadata             api.ObjectMeta          `json:"metadata"`
+		Spec                 fission.HTTPTriggerSpec `json:"spec"`
 	}
 	HttptriggerList struct {
 		unversioned.TypeMeta `json:",inline"`
@@ -130,16 +76,10 @@ type (
 	}
 
 	// Kubernetes Watches as function triggers
-	KuberneteswatchtriggerSpec struct {
-		Namespace         string            `json:"namespace"`
-		Type              string            `json:"type"`
-		LabelSelector     map[string]string `json:"labelselector"`
-		FunctionReference `json:"functionref"`
-	}
 	Kuberneteswatchtrigger struct {
 		unversioned.TypeMeta `json:",inline"`
-		Metadata             api.ObjectMeta             `json:"metadata"`
-		Spec                 KuberneteswatchtriggerSpec `json:"spec"`
+		Metadata             api.ObjectMeta                     `json:"metadata"`
+		Spec                 fission.KubernetesWatchTriggerSpec `json:"spec"`
 	}
 	KuberneteswatchtriggerList struct {
 		unversioned.TypeMeta `json:",inline"`
