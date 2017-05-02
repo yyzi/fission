@@ -19,60 +19,124 @@ package fission
 type (
 	// Metadata is used as the general identifier for all kinds of
 	// resources managed by the controller.
+	//
+	// Name is mutable. Uid is immutable. Version must be updated
+	// on any change to the object.  (Uid, Version) uniquely
+	// identifies the contents of the object.
+	//
+	// Labels are entirely optional; they're for higher level
+	// tools to organize functions or attach information to them.
 	Metadata struct {
-		Name string `json:"name"`
-		Uid  string `json:"uid,omitempty"`
+		Name        string            `json:"name"`
+		Namespace   string            `json:"namespace,omitempty"`
+		Uid         string            `json:"uid,omitempty"`
+		Version     string            `json:"version,omitempty"`
+		Labels      map[string]string `json:"labels,omitempty"`
+		Annotations map[string]string `json:"annotations,omitempty"`
 	}
 
-	// Function is a unit of executable code.  Though it's called
-	// a function, the code may have more than one function; it's
-	// usually some sort of module or package.
+	//
+	// Functions
+	//
+
+	// Package contains or references a collection of source or
+	// binary files.
+	Package struct {
+		// Literal can be used for encoding packages below a certain size.
+		Literal []byte `json:"literal"`
+
+		// URL can be used to reference
+		URL             string `json:"url"`
+		PackageStoreRef string `json:"packagestoreref"`
+
+		// Optional
+		entryPoint string `json:"entrypoint"`
+	}
+
+	FunctionSpec struct {
+		Source         Package `json:"source"`
+		Deployment     Package `json:"deployment"`
+		EnvironmentUid string  `json:"environmentuid"`
+	}
+
 	Function struct {
-		Metadata    `json:"metadata"`
-		Environment Metadata `json:"environment"`
-		Code        string   `json:"code"`
+		Metadata
+		Spec FunctionSpec
 	}
 
-	// Environment identifies the language and OS specific
-	// resources that a function depends on.  For now this
-	// includes only the function run container image.  Later,
-	// this will also include build containers, as well as support
-	// tools like debuggers, profilers, etc.
+	FunctionReference struct {
+		// Selector selects a function by labels.  Functions
+		// have auto-assigned labels in addition to user
+		// labels.
+		Selector map[string]string `json:"selector"`
+	}
+
+	//
+	// Environments
+	//
+
+	Runtime struct {
+		Image string `json:"image"`
+	}
+	Builder struct {
+		Image   string `json:"image"`
+		Command string `json:"command"`
+	}
+	EnvironmentSpec struct {
+		// Environment version
+		Version string `json:"version"`
+
+		// Runtime container image etc.; required
+		Runtime Runtime `json:"runtime"`
+
+		// Optional
+		Builder Builder `json:"builder"`
+
+		// FilenameExtensions can be used by CLI/UI tooling
+		// (e.g. auto-detect env by filename, syntax
+		// highlighting etc.)  It isn't enforced by fission
+		// itself in any way.
+		FilenameExtensions []string `json:"filenameextensions"`
+	}
 	Environment struct {
-		Metadata             `json:"metadata"`
-		RunContainerImageUrl string `json:"runContainerImageUrl"`
+		Metadata
+		Spec EnvironmentSpec
 	}
 
-	// HTTPTrigger maps URL patterns to functions.  Function.UID
-	// is optional; if absent, the latest version of the function
-	// will automatically be selected.
+	//
+	// Triggers
+	//
+
+	HTTPTriggerSpec struct {
+		Host              string `json:"host"`
+		RelativeURL       string `json:"relativeurl"`
+		Method            string `json:"method"`
+		FunctionReference `json:"functionref"`
+	}
 	HTTPTrigger struct {
-		Metadata   `json:"metadata"`
-		UrlPattern string   `json:"urlpattern"`
-		Method     string   `json:"method"`
-		Function   Metadata `json:"function"`
+		Metadata
+		Spec HTTPTriggerSpec
 	}
 
+	KubernetesWatchTriggerSpec struct {
+		Namespace         string            `json:"namespace"`
+		Type              string            `json:"type"`
+		LabelSelector     map[string]string `json:"labelselector"`
+		FunctionReference `json:"functionref"`
+	}
+	KubernetesWatchTrigger struct {
+		Metadata
+		Spec KubernetesWatchTriggerSpec
+	}
+
+	// MessageQueueTrigger invokes a function on events in a
+	// message queue.
 	MessageQueueTrigger struct {
 		Metadata         `json:"metadata"`
 		Function         Metadata `json:"function"`
 		MessageQueueType string   `json:"messageQueueType"`
 		Topic            string   `json:"topic"`
 		ResponseTopic    string   `json:"respTopic,omitempty"`
-	}
-
-	// Watch is a specification of Kubernetes watch along with a URL to post events to.
-	Watch struct {
-		Metadata `json:"metadata"`
-
-		Namespace     string `json:"namespace"`
-		ObjType       string `json:"objtype"`
-		LabelSelector string `json:"labelselector"`
-		FieldSelector string `json:"fieldselector"`
-
-		Function Metadata `json:"function"`
-
-		Target string `json:"target"` // Watch publish target (URL, NATS stream, etc)
 	}
 
 	// TimeTrigger invokes the specific function at a time or
@@ -103,6 +167,7 @@ const (
 	ErrorInvalidArgument
 	ErrorNoSpace
 	ErrorNotImplmented
+	ErrorTypeTranslation
 )
 
 // must match order and len of the above const
