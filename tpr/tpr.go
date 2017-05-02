@@ -18,32 +18,10 @@ package tpr
 
 import (
 	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/errors"
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/1.5/pkg/runtime"
-	"k8s.io/client-go/1.5/pkg/runtime/serializer"
-	"k8s.io/client-go/1.5/rest"
 )
-
-// Get a kubernetes client using the pod's service account.
-func getKubernetesClient() (*rest.Config, *kubernetes.Clientset, error) {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return config, clientset, nil
-}
 
 // ensureTPR checks if the given TPR type exists, and creates it if
 // needed. (Note that this creates the TPR type; it doesn't create any
@@ -107,64 +85,4 @@ func EnsureFissionTPRs(clientset *kubernetes.Clientset) error {
 		}
 	}
 	return nil
-}
-
-// This is copied from the client-go TPR example.  (I don't understand
-// all of it completely.)  It registers our types with the global API
-// "scheme" (api.Scheme), which keeps a directory of types [I guess so
-// it can use the string in the Kind field to make a Go object?].  It
-// also puts the fission TPR types under a "group version" which we
-// create for our TPRs types.
-func configureClient(config *rest.Config) {
-	groupversion := unversioned.GroupVersion{
-		Group:   "fission.io",
-		Version: "v1",
-	}
-	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
-
-	schemeBuilder := runtime.NewSchemeBuilder(
-		func(scheme *runtime.Scheme) error {
-			scheme.AddKnownTypes(
-				groupversion,
-				&Function{},
-				&FunctionList{},
-				&api.ListOptions{},
-				&api.DeleteOptions{},
-			)
-			scheme.AddKnownTypes(
-				groupversion,
-				&Environment{},
-				&EnvironmentList{},
-				&api.ListOptions{},
-				&api.DeleteOptions{},
-			)
-			scheme.AddKnownTypes(
-				groupversion,
-				&Httptrigger{},
-				&HttptriggerList{},
-				&api.ListOptions{},
-				&api.DeleteOptions{},
-			)
-			scheme.AddKnownTypes(
-				groupversion,
-				&Kuberneteswatchtrigger{},
-				&KuberneteswatchtriggerList{},
-				&api.ListOptions{},
-				&api.DeleteOptions{},
-			)
-			return nil
-		})
-	schemeBuilder.AddToScheme(api.Scheme)
-}
-
-func getTprClient(config *rest.Config) (*rest.RESTClient, error) {
-
-	// mutate config to add our types
-	configureClient(config)
-
-	// make a REST client with that config
-	return rest.RESTClientFor(config)
 }

@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/rest"
-	"k8s.io/client-go/1.5/tools/clientcmd"
+
+	"github.com/fission/fission"
 )
 
 func panicIf(err error) {
@@ -44,9 +44,9 @@ func functionTests(tprClient *rest.RESTClient) {
 		Metadata: api.ObjectMeta{
 			Name: "hello",
 		},
-		Spec: FunctionSpec{
-			Source: Package{},
-			Deployment: Package{
+		Spec: fission.FunctionSpec{
+			Source: fission.Package{},
+			Deployment: fission.Package{
 				Literal: []byte("hi"),
 			},
 			EnvironmentUid: "xxx",
@@ -132,11 +132,11 @@ func environmentTests(tprClient *rest.RESTClient) {
 		Metadata: api.ObjectMeta{
 			Name: "hello",
 		},
-		Spec: EnvironmentSpec{
-			Runtime: Runtime{
+		Spec: fission.EnvironmentSpec{
+			Runtime: fission.Runtime{
 				Image: "xxx",
 			},
-			Builder: Builder{
+			Builder: fission.Builder{
 				Image:   "yyy",
 				Command: "zzz",
 			},
@@ -223,10 +223,10 @@ func httpTriggerTests(tprClient *rest.RESTClient) {
 		Metadata: api.ObjectMeta{
 			Name: "hello",
 		},
-		Spec: HttptriggerSpec{
+		Spec: fission.HTTPTriggerSpec{
 			RelativeURL: "/hi",
 			Method:      "GET",
-			FunctionReference: FunctionReference{
+			FunctionReference: fission.FunctionReference{
 				Selector: map[string]string{
 					"name": "hello",
 					"uid":  "42",
@@ -314,13 +314,13 @@ func kubernetesWatchTriggerTests(tprClient *rest.RESTClient) {
 		Metadata: api.ObjectMeta{
 			Name: "hello",
 		},
-		Spec: KuberneteswatchtriggerSpec{
+		Spec: fission.KubernetesWatchTriggerSpec{
 			Namespace: "foo",
 			Type:      "pod",
 			LabelSelector: map[string]string{
 				"x": "y",
 			},
-			FunctionReference: FunctionReference{
+			FunctionReference: fission.FunctionReference{
 				Selector: map[string]string{
 					"name": "foo",
 				},
@@ -401,12 +401,9 @@ func TestTpr(t *testing.T) {
 
 	// TODO skip test if we're not configured with a cluster
 
-	// Create the client config. Use kubeconfig at ./config
-	config, err := clientcmd.BuildConfigFromFlags("", "config")
-	panicIf(err)
-
-	// kube client
-	clientset, err := kubernetes.NewForConfig(config)
+	// Create the client config. Needs the KUBECONFIG env var to
+	// point at a valid kubeconfig.
+	config, clientset, err := GetKubernetesClient()
 	panicIf(err)
 
 	// init our types
@@ -418,7 +415,7 @@ func TestTpr(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// rest client with knowledge about our tpr types
-	tprClient, err := getTprClient(config)
+	tprClient, err := GetTprClient(config)
 	panicIf(err)
 
 	functionTests(tprClient)
