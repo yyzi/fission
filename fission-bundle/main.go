@@ -20,12 +20,7 @@ func runController(port int, etcdUrl string, filepath string) {
 		log.Fatalf("Failed to initialize filestore")
 	}
 
-	rs, err := controller.MakeResourceStore(fileStore, []string{etcdUrl})
-	if err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-
-	api := controller.MakeAPI(rs)
+	api := controller.MakeAPI(k8sClient)
 	api.Serve(port)
 	log.Fatalf("Error: Controller exited.")
 }
