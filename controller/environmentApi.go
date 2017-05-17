@@ -23,20 +23,12 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	k_api "k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
-	"github.com/fission/fission/tpr"
 )
 
 func (api *API) EnvironmentApiList(w http.ResponseWriter, r *http.Request) {
-	envList, err := api.environment.List(k_api.ListOptions{})
-	if err != nil {
-		api.respondWithError(w, err)
-		return
-	}
-
-	envs, err := tpr.EnvironmentListFromTPR(envList)
+	envs, err := api.EnvironmentStore.List()
 	if err != nil {
 		api.respondWithError(w, err)
 		return
@@ -66,18 +58,13 @@ func (api *API) EnvironmentApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := api.environment.Create(tpr.EnvironmentToTPR(&env, nil))
+	uid, err := api.EnvironmentStore.Create(&env)
 	if err != nil {
 		api.respondWithError(w, err)
 		return
 	}
 
-	m, err := tpr.MetadataFromTPR(&t.Metadata)
-	if err != nil {
-		api.respondWithError(w, err)
-		return
-	}
-
+	m := &fission.Metadata{Name: env.Metadata.Name, Uid: uid}
 	resp, err := json.Marshal(m)
 	if err != nil {
 		api.respondWithError(w, err)
@@ -93,10 +80,9 @@ func (api *API) EnvironmentApiGet(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	m.Name = vars["environment"]
-	m.Uid = r.FormValue("uid")         // empty if absent
-	m.Version = r.FormValue("version") // empty if absent
+	m.Uid = r.FormValue("uid") // empty if uid is absent
 
-	env, err := api.environment.Get(xxx)
+	env, err := api.EnvironmentStore.Get(&m)
 	if err != nil {
 		api.respondWithError(w, err)
 		return
