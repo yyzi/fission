@@ -96,7 +96,7 @@ func (api *API) getLogDBConfig(dbType string) logDBConfig {
 
 func (api *API) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Fprintf(w, "{\"message\": \"Fission API\", \"version\": \"0.2.0\"}\n")
+	fmt.Fprintf(w, "{\"message\": \"Fission API\", \"version\": \"0.1.0\"}\n")
 }
 
 func (api *API) Serve(port int) {
