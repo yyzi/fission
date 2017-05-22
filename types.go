@@ -66,8 +66,8 @@ type (
 
 	FunctionReference struct {
 		// Selector selects a function by labels.  Functions
-		// have auto-assigned labels in addition to user
-		// labels.
+		// have auto-assigned name, uid, and version labels in
+		// addition to user labels.
 		Selector map[string]string `json:"selector"`
 	}
 
@@ -83,8 +83,8 @@ type (
 		Command string `json:"command"`
 	}
 	EnvironmentSpec struct {
-		// Environment version
-		Version string `json:"version"`
+		// Environment API version
+		Version int `json:"version"`
 
 		// Runtime container image etc.; required
 		Runtime `json:"runtime"`
@@ -131,12 +131,13 @@ type (
 
 	// TimeTrigger invokes the specific function at a time or
 	// times specified by a cron string.
+	TimeTriggerSpec struct {
+		Cron              string `json:"cron"`
+		FunctionReference `json:"functionref"`
+	}
 	TimeTrigger struct {
-		Metadata `json:"metadata"`
-
-		Cron string `json:"cron"`
-
-		Function Metadata `json:"function"`
+		Metadata
+		Spec TimeTriggerSpec
 	}
 
 	// Errors returned by the Fission API.
