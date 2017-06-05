@@ -42,21 +42,25 @@ type (
 	// Package contains or references a collection of source or
 	// binary files.
 	Package struct {
-		// Literal can be used for encoding packages below a certain size.
+		// Literal contents of the package.  Can be used for
+		// encoding packages below TODO (256KB?) size.
 		Literal []byte `json:"literal"`
 
-		// URL can be used to reference
-		URL             string `json:"url"`
-		PackageStoreRef string `json:"packagestoreref"`
+		// Reference to a package, with a checksum. ChecksumType is
+		URL          string `json:"url"`
+		ChecksumType string `json:"checksumType"`
+		Checksum     []byte `json:"checksum"`
 
-		// Optional
+		// Optional entry point in the package. Each
+		// environment defines a default function entry point
+		// name, but its name can be overridden here.
 		entryPoint string `json:"entrypoint"`
 	}
 
 	FunctionSpec struct {
-		Source         Package `json:"source"`
-		Deployment     Package `json:"deployment"`
-		EnvironmentUid string  `json:"environmentuid"`
+		Source          Package `json:"source"`
+		Deployment      Package `json:"deployment"`
+		EnvironmentName string  `json:"environmentName"`
 	}
 
 	Function struct {
@@ -91,12 +95,6 @@ type (
 
 		// Optional
 		Builder `json:"builder"`
-
-		// FilenameExtensions can be used by CLI/UI tooling
-		// (e.g. auto-detect env by filename, syntax
-		// highlighting etc.)  It isn't enforced by fission
-		// itself in any way.
-		FilenameExtensions []string `json:"filenameextensions"`
 	}
 	Environment struct {
 		Metadata
