@@ -12,6 +12,16 @@ import (
 	"k8s.io/client-go/1.5/tools/clientcmd"
 )
 
+type (
+	FissionClient struct {
+		Functions               FunctionInterface
+		Environments            EnvironmentInterface
+		Httptriggers            HttptriggerInterface
+		Kuberneteswatchtriggers KuberneteswatchtriggerInterface
+		//Timetriggers TimetriggerInterface
+	}
+)
+
 // Get a kubernetes client using the kubeconfig file at the
 // environment var $KUBECONFIG, or an in-cluster config if that's
 // undefined.
@@ -103,4 +113,21 @@ func configureClient(config *rest.Config) {
 			return nil
 		})
 	schemeBuilder.AddToScheme(api.Scheme)
+}
+
+func MakeFissionClient(ns string) (*FissionClient, error) {
+	config, _, err := GetKubernetesClient()
+	if err != nil {
+		return nil, err
+	}
+	tprClient, err := GetTprClient(config)
+	if err != nil {
+		return nil, err
+	}
+	return &FissionClient{
+		Functions:               MakeFunctionInterface(tprClient, ns),
+		Environments:            MakeEnvironmentInterface(tprClient, ns),
+		Httptriggers:            MakeHttptriggerInterface(tprClient, ns),
+		Kuberneteswatchtriggers: MakeKuberneteswatchtriggerInterface(tprClient, ns),
+	}, nil
 }
