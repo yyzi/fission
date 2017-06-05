@@ -73,10 +73,14 @@ func functionTests(tprClient *rest.RESTClient) {
 		log.Panicf("Bad result from Get: %v", f)
 	}
 
+	log.Printf("f.Metadata = %#v", f.Metadata)
+
 	// update
 	function.Spec.EnvironmentUid = "yyy"
 	f, err = fi.Update(function)
 	panicIf(err)
+
+	log.Printf("f.Metadata = %#v", f.Metadata)
 
 	// list
 	fl, err := fi.List(api.ListOptions{})
