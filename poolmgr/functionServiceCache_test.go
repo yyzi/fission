@@ -18,16 +18,22 @@ func TestFunctionServiceCache(t *testing.T) {
 	now := time.Now()
 
 	fsvc = &funcSvc{
-		function: &fission.Metadata{
+		function: &api.ObjectMeta{
 			Name: "foo",
-			Uid:  "1212",
+			UID:  "1212",
 		},
-		environment: &fission.Environment{
-			Metadata: fission.Metadata{
+		environment: &tpr.Environment{
+			Metadata: api.ObjectMeta{
 				Name: "foo-env",
-				Uid:  "2323",
+				UID:  "2323",
 			},
-			RunContainerImageUrl: "fission/foo-env",
+			Spec: fission.EnvironmentSpec{
+				Version: 1,
+				Runtime: Runtime{
+					Image: "fission/foo-env",
+				},
+				Builder: Builder{},
+			},
 		},
 		address: "xxx",
 		podName: "yyy",

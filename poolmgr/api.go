@@ -28,42 +28,30 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/cache"
-	controllerclient "github.com/fission/fission/controller/client"
+	"github.com/fission/fission/tpr"
 )
 
-type funcSvc struct {
-	function    *fission.Metadata    // function this pod/service is for
-	environment *fission.Environment // env it was obtained from
-	address     string               // Host:Port or IP:Port that the service can be reached at.
-	podName     string               // pod name (within the function namespace)
-
-	ctime time.Time
-	atime time.Time
+type Poolmgr struct {
+	gpm           *GenericPoolManager
+	functionEnv   *cache.Cache // map[string]tpr.Environment
+	fsCache       *functionServiceCache
+	fissionClient *tpr.FissionClient
 }
 
-type API struct {
-	poolMgr     *GenericPoolManager
-	functionEnv *cache.Cache // map[fission.Metadata]fission.Environment
-	fsCache     *functionServiceCache
-	controller  *controllerclient.Client
-
-	//functionService *cache.Cache // map[fission.Metadata]*funcSvc
-	//urlFuncSvc      *cache.Cache // map[string]*funcSvc
-}
-
-func MakeAPI(gpm *GenericPoolManager, controller *controllerclient.Client, fsCache *functionServiceCache) *API {
-	return &API{
-		poolMgr:     gpm,
-		functionEnv: cache.MakeCache(time.Minute, 0),
-		fsCache:     fsCache,
-		controller:  controller,
+func MakePoolmgr(gpm *GenericPoolManager, fissionClient *tpr.FissionClient, fsCache *functionServiceCache) *Poolmgr {
+	return &Poolmgr{
+		gpm:           gpm,
+		functionEnv:   cache.MakeCache(10*time.Second, 0),
+		fsCache:       fsCache,
+		fissionClient: fissionClient,
 	}
 }
 
-func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
+func (poolMgr *Poolmgr) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)
@@ -71,14 +59,14 @@ func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request)
 	}
 
 	// get function metadata
-	m := fission.Metadata{}
+	m := api.ObjectMeta{}
 	err = json.Unmarshal(body, &m)
 	if err != nil {
 		http.Error(w, "Failed to parse request", 400)
 		return
 	}
 
-	serviceName, err := api.getServiceForFunction(&m)
+	serviceName, err := poolMgr.getServiceForFunction(&m)
 	if err != nil {
 		code, msg := fission.GetHTTPError(err)
 		log.Printf("Error: %v: %v", code, msg)
@@ -88,48 +76,39 @@ func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request)
 	w.Write([]byte(serviceName))
 }
 
-func (api *API) getFunctionEnv(m *fission.Metadata) (*fission.Environment, error) {
-	var env *fission.Environment
+func (poolMgr *Poolmgr) getFunctionEnv(m *api.ObjectMeta) (*tpr.Environment, error) {
+	var env *tpr.Environment
 
 	// Cached ?
-	result, err := api.functionEnv.Get(*m)
+	result, err := poolMgr.functionEnv.Get(cacheKey(m))
 	if err == nil {
-		env = result.(*fission.Environment)
+		env = result.(*tpr.Environment)
 		return env, nil
 	}
 
 	// Cache miss -- get func from controller
-	log.Printf("[%v] getting function from controller", m)
-	f, err := api.controller.FunctionGet(m)
+	f, err := poolMgr.fissionClient.Functions.Get(m.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get env from metadata
 	log.Printf("[%v] getting env from controller", m)
-	env, err = api.controller.EnvironmentGet(&f.Environment)
+	env, err = poolMgr.fissionClient.Environments.Get(f.Spec.EnvironmentName)
 	if err != nil {
 		return nil, err
 	}
 
-	// cache for future
-	api.functionEnv.Set(*m, env)
+	// cache for future lookups
+	poolMgr.functionEnv.Set(cacheKey(m), env)
 
 	return env, nil
 }
 
-func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
-	// Make sure we have the full metadata.  This ensures that
-	// poolmgr does not implicitly interpret empty-UID as latest
-	// version.
-	if len(m.Uid) == 0 {
-		return "", fission.MakeError(fission.ErrorInvalidArgument,
-			fmt.Sprintf("invalid metadata for function %v", m.Name))
-	}
-
+func (poolMgr *Poolmgr) getServiceForFunction(m *api.ObjectMeta) (string, error) {
 	// Check function -> svc cache
 	log.Printf("[%v] Checking for cached function service", m.Name)
-	fsvc, err := api.fsCache.GetByFunction(m)
+	fsvc, err := poolMgr.fsCache.GetByFunction(m)
 	if err == nil {
 		// Cached, return svc address
 		return fsvc.address, nil
@@ -140,14 +119,14 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 
 	// from Func -> get Env
 	log.Printf("[%v] getting environment for function", m.Name)
-	env, err := api.getFunctionEnv(m)
+	env, err := poolMgr.getFunctionEnv(m)
 	if err != nil {
 		return "", err
 	}
 
 	// from Env -> get GenericPool
 	log.Printf("[%v] getting generic pool for env", m.Name)
-	pool, err := api.poolMgr.GetPool(env)
+	pool, err := poolMgr.gpm.GetPool(env)
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +143,7 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 }
 
 // find funcSvc and update its atime
-func (api *API) tapService(w http.ResponseWriter, r *http.Request) {
+func (poolMgr *Poolmgr) tapService(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)
@@ -173,7 +152,7 @@ func (api *API) tapService(w http.ResponseWriter, r *http.Request) {
 	svcName := string(body)
 	svcHost := strings.TrimPrefix(svcName, "http://")
 
-	err = api.fsCache.TouchByAddress(svcHost)
+	err = poolMgr.fsCache.TouchByAddress(svcHost)
 	if err != nil {
 		log.Printf("funcSvc tap error: %v", err)
 		http.Error(w, "Not found", 404)
@@ -182,10 +161,10 @@ func (api *API) tapService(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (api *API) Serve(port int) {
+func (poolMgr *Poolmgr) Serve(port int) {
 	r := mux.NewRouter()
-	r.HandleFunc("/v1/getServiceForFunction", api.getServiceForFunctionApi).Methods("POST")
-	r.HandleFunc("/v1/tapService", api.tapService).Methods("POST")
+	r.HandleFunc("/v1/getServiceForFunction", poolMgr.getServiceForFunctionApi).Methods("POST")
+	r.HandleFunc("/v1/tapService", poolMgr.tapService).Methods("POST")
 
 	address := fmt.Sprintf(":%v", port)
 	log.Printf("starting poolmgr at port %v", port)

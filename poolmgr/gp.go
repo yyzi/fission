@@ -39,6 +39,7 @@ import (
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/logger"
+	"github.com/fission/fission/tpr"
 )
 
 const POOLMGR_INSTANCEID_LABEL string = "poolmgrInstanceId"
@@ -46,7 +47,7 @@ const POD_PHASE_RUNNING string = "Running"
 
 type (
 	GenericPool struct {
-		env              *fission.Environment
+		env              *tpr.Environment
 		replicas         int32               // num idle pods
 		deployment       *v1beta1.Deployment // kubernetes deployment
 		namespace        string              // namespace to keep our resources
@@ -76,7 +77,7 @@ type (
 func MakeGenericPool(
 	controllerUrl string,
 	kubernetesClient *kubernetes.Clientset,
-	env *fission.Environment,
+	env *tpr.Environment,
 	initialReplicas int32,
 	namespace string,
 	fsCache *functionServiceCache,
@@ -104,7 +105,7 @@ func MakeGenericPool(
 	// Labels for generic deployment/RS/pods.
 	gp.labelsForPool = map[string]string{
 		"environmentName":        gp.env.Metadata.Name,
-		"environmentUid":         gp.env.Metadata.Uid,
+		"environmentUid":         string(gp.env.Metadata.UID),
 		POOLMGR_INSTANCEID_LABEL: gp.instanceId,
 	}
 
@@ -220,10 +221,10 @@ func (gp *GenericPool) _choosePod(newLabels map[string]string) (*v1.Pod, error) 
 	}
 }
 
-func (gp *GenericPool) labelsForFunction(metadata *fission.Metadata) map[string]string {
+func (gp *GenericPool) labelsForFunction(metadata *api.ObjectMeta) map[string]string {
 	return map[string]string{
 		"functionName":           metadata.Name,
-		"functionUid":            metadata.Uid,
+		"functionUid":            string(metadata.UID),
 		"unmanaged":              "true", // this allows us to easily find pods not managed by the deployment
 		POOLMGR_INSTANCEID_LABEL: gp.instanceId,
 	}
@@ -243,7 +244,7 @@ func (gp *GenericPool) scheduleDeletePod(name string) {
 // specializePod chooses a pod, copies the required user-defined function to that pod
 // (via fetcher), and calls the function-run container to load it, resulting in a
 // specialized pod.
-func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) error {
+func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *api.ObjectMeta) error {
 	// for fetcher we don't need to create a service, just talk to the pod directly
 	podIP := pod.Status.PodIP
 	if len(podIP) == 0 {
@@ -253,10 +254,10 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) er
 	// tell fetcher to get the function.
 	fetcherUrl := fmt.Sprintf("http://%v:8000/", podIP)
 	functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
-		gp.controllerUrl, metadata.Name, metadata.Uid)
+		gp.controllerUrl, metadata.Name, metadata.UID)
 	fetcherRequest := fmt.Sprintf("{\"url\": \"%v\", \"filename\": \"user\"}", functionUrl)
 
-	log.Printf("[%v] calling fetcher to copy function", metadata)
+	log.Printf("[%v] calling fetcher to copy function", metadata.Name)
 	resp, err := http.Post(fetcherUrl, "application/json", bytes.NewReader([]byte(fetcherRequest)))
 	if err != nil {
 		// TODO we should retry this call in case fetcher hasn't come up yet
@@ -271,7 +272,7 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) er
 	gp.setupLogging(pod, metadata)
 
 	// get function run container to specialize
-	log.Printf("[%v] specializing pod", metadata)
+	log.Printf("[%v] specializing pod", metadata.Name)
 	specializeUrl := fmt.Sprintf("http://%v:8888/specialize", podIP)
 
 	// retry the specialize call a few times in case the env server hasn't come up yet
@@ -311,7 +312,7 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) er
 // creates the pool but doesn't wait for any pods to be ready.
 func (gp *GenericPool) createPool() error {
 	poolDeploymentName := fmt.Sprintf("%v-%v-%v",
-		gp.env.Metadata.Name, gp.env.Metadata.Uid, strings.ToLower(gp.poolInstanceId))
+		gp.env.Metadata.Name, gp.env.Metadata.UID, strings.ToLower(gp.poolInstanceId))
 
 	sharedMountPath := "/userfunc"
 	deployment := &v1beta1.Deployment{
@@ -340,7 +341,7 @@ func (gp *GenericPool) createPool() error {
 					Containers: []v1.Container{
 						{
 							Name:                   gp.env.Metadata.Name,
-							Image:                  gp.env.RunContainerImageUrl,
+							Image:                  gp.env.Spec.Runtime.Image,
 							ImagePullPolicy:        v1.PullIfNotPresent,
 							TerminationMessagePath: "/dev/termination-log",
 							VolumeMounts: []v1.VolumeMount{
@@ -418,9 +419,9 @@ func (gp *GenericPool) createSvc(name string, labels map[string]string) (*v1.Ser
 	return svc, err
 }
 
-func (gp *GenericPool) GetFuncSvc(m *fission.Metadata) (*funcSvc, error) {
+func (gp *GenericPool) GetFuncSvc(m *api.ObjectMeta) (*funcSvc, error) {
 
-	log.Printf("[%v] Choosing pod from pool", m)
+	log.Printf("[%v] Choosing pod from pool", m.Name)
 	newLabels := gp.labelsForFunction(m)
 	pod, err := gp.choosePod(newLabels)
 	if err != nil {
@@ -437,8 +438,8 @@ func (gp *GenericPool) GetFuncSvc(m *fission.Metadata) (*funcSvc, error) {
 	var svcHost string
 	if gp.useSvc {
 		svcName := fmt.Sprintf("svc-%v", m.Name)
-		if len(m.Uid) > 0 {
-			svcName += ("-" + m.Uid)
+		if len(m.UID) > 0 {
+			svcName += ("-" + string(m.UID))
 		}
 
 		labels := gp.labelsForFunction(m)
@@ -581,13 +582,13 @@ func (gp *GenericPool) destroy() error {
 
 // Calls the logging daemonset pod on the node where the given pod is
 // running.
-func (gp *GenericPool) setupLogging(pod *v1.Pod, metadata *fission.Metadata) {
+func (gp *GenericPool) setupLogging(pod *v1.Pod, metadata *api.ObjectMeta) {
 	logReq := logger.LogRequest{
 		Namespace: pod.Namespace,
 		Pod:       pod.Name,
 		Container: gp.env.Metadata.Name,
 		FuncName:  metadata.Name,
-		FuncUid:   metadata.Uid,
+		FuncUid:   string(metadata.UID),
 	}
 	reqbody, err := json.Marshal(logReq)
 	if err != nil {

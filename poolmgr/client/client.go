@@ -17,14 +17,16 @@ limitations under the License.
 package client
 
 import (
-	"net/http"
-	"strings"
-
 	"bytes"
 	"encoding/json"
-	"github.com/fission/fission"
 	"io/ioutil"
+	"net/http"
 	"net/url"
+	"strings"
+
+	"k8s.io/client-go/1.5/pkg/api"
+
+	"github.com/fission/fission"
 )
 
 type Client struct {
@@ -35,7 +37,7 @@ func MakeClient(poolmgrUrl string) *Client {
 	return &Client{poolmgrUrl: strings.TrimSuffix(poolmgrUrl, "/")}
 }
 
-func (c *Client) GetServiceForFunction(metadata *fission.Metadata) (string, error) {
+func (c *Client) GetServiceForFunction(metadata *api.ObjectMeta) (string, error) {
 	url := c.poolmgrUrl + "/v1/getServiceForFunction"
 	body, err := json.Marshal(metadata)
 	if err != nil {
