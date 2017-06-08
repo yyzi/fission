@@ -40,7 +40,9 @@ type (
 	//
 
 	// Used to checksum the contents of a package when it is
-	// stored outside the Package struct.  Sum is hex encoded.
+	// stored outside the Package struct.  Type is the checksum
+	// algorithm; "sha256" is the only currently supported
+	// one. Sum is hex encoded.
 	Checksum struct {
 		Type string `json:"checksumType"`
 		Sum  string `json:"checksum"`
