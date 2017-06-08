@@ -38,6 +38,7 @@ type (
 		pools            map[string]*GenericPool
 		kubernetesClient *kubernetes.Clientset
 		namespace        string
+		fissionNs        string
 		controllerUrl    string
 		fissionClient    *tpr.FissionClient
 		fsCache          *functionServiceCache
@@ -58,22 +59,18 @@ type (
 
 func MakeGenericPoolManager(
 	controllerUrl string,
+	fissionClient *tpr.FissionClient,
 	kubernetesClient *kubernetes.Clientset,
 	fissionNamespace string,
 	functionNamespace string,
 	fsCache *functionServiceCache,
 	instanceId string) *GenericPoolManager {
 
-	fissionClient, err := tpr.MakeFissionClient(fissionNamespace)
-	if err != nil {
-		//xxx
-		log.Panicf("xxx")
-	}
-
 	gpm := &GenericPoolManager{
 		pools:            make(map[string]*GenericPool),
 		kubernetesClient: kubernetesClient,
 		namespace:        functionNamespace,
+		fissionNs:        fissionNamespace,
 		controllerUrl:    controllerUrl,
 		fissionClient:    fissionClient,
 		fsCache:          fsCache,
@@ -152,7 +149,7 @@ func (gpm *GenericPoolManager) eagerPoolCreator() {
 		time.Sleep(pollSleep)
 
 		// get list of envs from controller
-		envs, err := gpm.fissionClient.Environments.List(api.ListOptions{})
+		envs, err := gpm.fissionClient.Environments(gpm.fissionNs).List(api.ListOptions{})
 		if err != nil {
 			failureCount++
 			if failureCount >= maxFailures {

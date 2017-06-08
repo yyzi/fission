@@ -22,32 +22,10 @@ import (
 	"strings"
 
 	"github.com/dchest/uniuri"
-	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/rest"
 
 	"github.com/fission/fission/tpr"
 )
-
-// Get a kubernetes client using the pod's service account.  This only
-// works when we're running inside a kubernetes cluster.
-func getKubernetesClient() (*kubernetes.Clientset, error) {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Printf("Error getting kubernetes client config: %v", err)
-		return nil, err
-	}
-
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Printf("Error getting kubernetes client: %v", err)
-		return nil, err
-	}
-
-	return clientset, nil
-}
 
 // Given metadata, create a key that uniquely identifies the contents
 // of the object. Since resourceVersion changes on every update and
@@ -63,13 +41,7 @@ func cacheKey(metadata *api.ObjectMeta) string {
 func StartPoolmgr(controllerUrl string, fissionNamespace string, functionNamespace string, port int) error {
 	controllerUrl = strings.TrimSuffix(controllerUrl, "/")
 
-	fissionClient, err := tpr.MakeFissionClient(fissionNamespace)
-	if err != nil {
-		log.Printf("Failed to get kubernetes client: %v", err)
-		return err
-	}
-
-	kubernetesClient, err := getKubernetesClient()
+	fissionClient, kubernetesClient, err := tpr.MakeFissionClient()
 	if err != nil {
 		log.Printf("Failed to get kubernetes client: %v", err)
 		return err
@@ -79,10 +51,11 @@ func StartPoolmgr(controllerUrl string, fissionNamespace string, functionNamespa
 	cleanupOldPoolmgrResources(kubernetesClient, functionNamespace, instanceId)
 
 	fsCache := MakeFunctionServiceCache()
-	gpm := MakeGenericPoolManager(controllerUrl, kubernetesClient, fissionNamespace,
+	gpm := MakeGenericPoolManager(
+		controllerUrl, fissionClient, kubernetesClient, fissionNamespace,
 		functionNamespace, fsCache, instanceId)
 
-	api := MakePoolmgr(gpm, fissionClient, fsCache)
+	api := MakePoolmgr(gpm, fissionClient, fissionNamespace, fsCache)
 	go api.Serve(port)
 
 	return nil

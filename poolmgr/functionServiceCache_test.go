@@ -3,9 +3,12 @@ package poolmgr
 import (
 	"log"
 	"testing"
+	"time"
+
+	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
-	"time"
+	"github.com/fission/fission/tpr"
 )
 
 func TestFunctionServiceCache(t *testing.T) {
@@ -29,10 +32,10 @@ func TestFunctionServiceCache(t *testing.T) {
 			},
 			Spec: fission.EnvironmentSpec{
 				Version: 1,
-				Runtime: Runtime{
+				Runtime: fission.Runtime{
 					Image: "fission/foo-env",
 				},
-				Builder: Builder{},
+				Builder: fission.Builder{},
 			},
 		},
 		address: "xxx",

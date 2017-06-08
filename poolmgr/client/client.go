@@ -38,7 +38,7 @@ func MakeClient(poolmgrUrl string) *Client {
 }
 
 func (c *Client) GetServiceForFunction(metadata *api.ObjectMeta) (string, error) {
-	url := c.poolmgrUrl + "/v1/getServiceForFunction"
+	url := c.poolmgrUrl + "/v2/getServiceForFunction"
 	body, err := json.Marshal(metadata)
 	if err != nil {
 		return "", err
@@ -63,7 +63,7 @@ func (c *Client) GetServiceForFunction(metadata *api.ObjectMeta) (string, error)
 }
 
 func (c *Client) TapService(serviceUrl *url.URL) error {
-	url := c.poolmgrUrl + "/v1/tapService"
+	url := c.poolmgrUrl + "/v2/tapService"
 
 	serviceUrlStr := serviceUrl.String()
 
