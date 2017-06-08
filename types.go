@@ -53,7 +53,7 @@ type (
 		// encoding packages below TODO (256KB?) size.
 		Literal []byte `json:"literal"`
 
-		// Reference to a package, with a checksum. ChecksumType is
+		// Reference to a package, with a checksum.
 		URL      string   `json:"url"`
 		Checksum Checksum `json:"checksum"`
 
