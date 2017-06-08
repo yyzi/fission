@@ -14,11 +14,7 @@ import (
 
 type (
 	FissionClient struct {
-		Functions               FunctionInterface
-		Environments            EnvironmentInterface
-		Httptriggers            HttptriggerInterface
-		Kuberneteswatchtriggers KuberneteswatchtriggerInterface
-		//Timetriggers TimetriggerInterface
+		tprClient *rest.RESTClient
 	}
 )
 
@@ -115,19 +111,30 @@ func configureClient(config *rest.Config) {
 	schemeBuilder.AddToScheme(api.Scheme)
 }
 
-func MakeFissionClient(ns string) (*FissionClient, error) {
-	config, _, err := GetKubernetesClient()
+func MakeFissionClient() (*FissionClient, *kubernetes.Clientset, error) {
+	config, kubeClient, err := GetKubernetesClient()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	tprClient, err := GetTprClient(config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &FissionClient{
-		Functions:               MakeFunctionInterface(tprClient, ns),
-		Environments:            MakeEnvironmentInterface(tprClient, ns),
-		Httptriggers:            MakeHttptriggerInterface(tprClient, ns),
-		Kuberneteswatchtriggers: MakeKuberneteswatchtriggerInterface(tprClient, ns),
-	}, nil
+	fc := &FissionClient{
+		tprClient: tprClient,
+	}
+	return fc, kubeClient, nil
+}
+
+func (fc *FissionClient) Functions(ns string) FunctionInterface {
+	return MakeFunctionInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) Environments(ns string) EnvironmentInterface {
+	return MakeEnvironmentInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) Httptriggers(ns string) HttptriggerInterface {
+	return MakeHttptriggerInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) Kuberneteswatchtriggers(ns string) KuberneteswatchtriggerInterface {
+	return MakeKuberneteswatchtriggerInterface(fc.tprClient, ns)
 }
