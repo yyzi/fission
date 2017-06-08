@@ -39,6 +39,13 @@ type (
 	// Functions
 	//
 
+	// Used to checksum the contents of a package when it is
+	// stored outside the Package struct.  Sum is hex encoded.
+	Checksum struct {
+		Type string `json:"checksumType"`
+		Sum  string `json:"checksum"`
+	}
+
 	// Package contains or references a collection of source or
 	// binary files.
 	Package struct {
@@ -47,9 +54,8 @@ type (
 		Literal []byte `json:"literal"`
 
 		// Reference to a package, with a checksum. ChecksumType is
-		URL          string `json:"url"`
-		ChecksumType string `json:"checksumType"`
-		Checksum     []byte `json:"checksum"`
+		URL      string   `json:"url"`
+		Checksum Checksum `json:"checksum"`
 
 		// Optional entry point in the package. Each
 		// environment defines a default function entry point
@@ -167,6 +173,7 @@ const (
 	ErrorNoSpace
 	ErrorNotImplmented
 	ErrorTypeTranslation
+	ErrorChecksumFail
 )
 
 // must match order and len of the above const
