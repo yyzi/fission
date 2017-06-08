@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,19 +10,92 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+
+	"github.com/fission/fission"
+	"github.com/fission/fission/tpr"
+	"io"
 )
 
-type FetchRequest struct {
-	Url      string `json:"url"`
-	Filename string `json:"filename"`
-}
+type (
+	FetchRequestType string
 
-type Fetcher struct {
-	sharedVolumePath string
-}
+	FetchRequest struct {
+		fetchType FetchRequestType `json:"fetchType"`
+		function  api.ObjectMeta   `json:"function"`
+		Url       string           `json:"url"`
+		Filename  string           `json:"filename"`
+	}
+
+	Fetcher struct {
+		sharedVolumePath string
+		fissionClient    *tpr.FissionClient
+		kubeClient       *kubernetes.Clientset
+	}
+)
+
+const (
+	FETCH_SOURCE     = "source"
+	FETCH_DEPLOYMENT = "deployment"
+	FETCH_URL        = "url" // remove this?
+)
 
 func MakeFetcher(sharedVolumePath string) *Fetcher {
-	return &Fetcher{sharedVolumePath: sharedVolumePath}
+	fissionClient, kubeClient, err := tpr.MakeFissionClient()
+	if err != nil {
+		return nil
+	}
+	return &Fetcher{
+		sharedVolumePath: sharedVolumePath,
+		fissionClient:    fissionClient,
+		kubeClient:       kubeClient,
+	}
+}
+
+func downloadUrl(url string, localPath string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(localPath, body, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func verifyChecksum(path string, checksum *fission.Checksum) error {
+	if checksum.Type != "sha256" {
+		return fission.MakeError(fission.ErrorInvalidArgument, "Unsupported checksum type")
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	_, err = io.Copy(hasher, f)
+	if err != nil {
+		return err
+	}
+
+	c := hex.EncodeToString(hasher.Sum(nil))
+	if c != checksum.Sum {
+		return fission.MakeError(fission.ErrorChecksumFail, "Checksum validation failed")
+	}
+	return nil
 }
 
 func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
@@ -45,33 +120,67 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("fetcher request: %v", req)
 
-	// fetch the file and save it to tmp path
-	resp, err := http.Get(req.Url)
-	if err != nil {
-		e := fmt.Sprintf("Failed to fetch from url: %v", err)
-		log.Printf(e)
-		http.Error(w, e, 400)
-		return
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		e := fmt.Sprintf("Failed to read from url: %v", err)
-		log.Printf(e)
-		http.Error(w, e, 400)
-		return
-	}
 	tmpFile := req.Filename + ".tmp"
 	tmpPath := filepath.Join(fetcher.sharedVolumePath, tmpFile)
-	err = ioutil.WriteFile(tmpPath, body, 0600)
-	if err != nil {
-		e := fmt.Sprintf("Failed to write file: %v", err)
-		log.Printf(e)
-		http.Error(w, e, 500)
-		return
-	}
 
-	// TODO: add signature verification
+	if req.fetchType == FETCH_URL {
+		// fetch the file and save it to the tmp path
+		err := downloadUrl(req.Url, tmpPath)
+		if err != nil {
+			e := fmt.Sprintf("Failed to download url %v: %v", req.Url, err)
+			log.Printf(e)
+			http.Error(w, e, 400)
+			return
+		}
+	} else {
+		// get function object
+		fn, err := fetcher.fissionClient.Functions(req.function.Namespace).Get(req.function.Name)
+		if err != nil {
+			e := fmt.Sprintf("Failed to get function: %v", err)
+			log.Printf(e)
+			http.Error(w, e, 500)
+			return
+		}
+
+		// get pkg
+		var pkg *fission.Package
+		if req.fetchType == FETCH_SOURCE {
+			pkg = &fn.Spec.Source
+		} else if req.fetchType == FETCH_DEPLOYMENT {
+			pkg = &fn.Spec.Deployment
+		}
+
+		// get package data as literal or by url
+		if len(pkg.Literal) > 0 {
+			// write pkg.Literal into tmpPath
+			err = ioutil.WriteFile(tmpPath, pkg.Literal, 0600)
+			if err != nil {
+				e := fmt.Sprintf("Failed to write file %v: %v", tmpPath, err)
+				log.Printf(e)
+				http.Error(w, e, 500)
+				return
+			}
+		} else {
+			// download and verify
+
+			err = downloadUrl(pkg.URL, tmpPath)
+			if err != nil {
+				e := fmt.Sprintf("Failed to download url %v: %v", req.Url, err)
+				log.Printf(e)
+				http.Error(w, e, 400)
+				return
+			}
+
+			err = verifyChecksum(tmpPath, &pkg.Checksum)
+			if err != nil {
+				e := fmt.Sprintf("Failed to verify checksum: %v", err)
+				log.Printf(e)
+				http.Error(w, e, 400)
+				return
+			}
+		}
+
+	}
 
 	// move tmp file to requested filename
 	err = os.Rename(tmpPath, filepath.Join(fetcher.sharedVolumePath, req.Filename))
