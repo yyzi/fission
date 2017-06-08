@@ -38,7 +38,7 @@ import (
 
 type (
 	createFuncServiceRequest struct {
-		funcMeta *fission.Metadata
+		funcMeta *api.ObjectMeta
 		respChan chan *createFuncServiceResponse
 	}
 
@@ -52,19 +52,21 @@ type (
 		functionEnv   *cache.Cache // map[string]tpr.Environment
 		fsCache       *functionServiceCache
 		fissionClient *tpr.FissionClient
+		fissionNs     string
 
-		fsCreateChannels map[fission.Metadata]*sync.WaitGroup // xxx no channels here, rename this
+		fsCreateChannels map[string]*sync.WaitGroup // xxx no channels here, rename this
 		requestChan      chan *createFuncServiceRequest
 	}
 )
 
-func MakePoolmgr(gpm *GenericPoolManager, fissionClient *tpr.FissionClient, fsCache *functionServiceCache) *Poolmgr {
+func MakePoolmgr(gpm *GenericPoolManager, fissionClient *tpr.FissionClient, fissionNs string, fsCache *functionServiceCache) *Poolmgr {
 	poolMgr := &Poolmgr{
 		gpm:              gpm,
 		functionEnv:      cache.MakeCache(10*time.Second, 0),
 		fsCache:          fsCache,
 		fissionClient:    fissionClient,
-		fsCreateChannels: make(map[fission.Metadata]*sync.WaitGroup),
+		fissionNs:        fissionNs,
+		fsCreateChannels: make(map[string]*sync.WaitGroup),
 		requestChan:      make(chan *createFuncServiceRequest),
 	}
 	go poolMgr.serveCreateFuncServices()
@@ -83,13 +85,13 @@ func (poolMgr *Poolmgr) serveCreateFuncServices() {
 		m := req.funcMeta
 
 		// Cache miss -- is this first one to request the func?
-		wg, found := poolMgr.fsCreateChannels[*m]
+		wg, found := poolMgr.fsCreateChannels[cacheKey(m)]
 		if !found {
 			// create a waitgroup for other requests for
 			// the same function to wait on
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
-			poolMgr.fsCreateChannels[*m] = wg
+			poolMgr.fsCreateChannels[cacheKey(m)] = wg
 
 			// launch a goroutine for each request, to parallelize
 			// the specialization of different functions
@@ -99,7 +101,7 @@ func (poolMgr *Poolmgr) serveCreateFuncServices() {
 					address: address,
 					err:     err,
 				}
-				delete(poolMgr.fsCreateChannels, *m)
+				delete(poolMgr.fsCreateChannels, cacheKey(m))
 				wg.Done()
 			}()
 		} else {
@@ -159,14 +161,14 @@ func (poolMgr *Poolmgr) getFunctionEnv(m *api.ObjectMeta) (*tpr.Environment, err
 	}
 
 	// Cache miss -- get func from controller
-	f, err := poolMgr.fissionClient.Functions.Get(m.Name)
+	f, err := poolMgr.fissionClient.Functions(m.Namespace).Get(m.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get env from metadata
 	log.Printf("[%v] getting env from controller", m)
-	env, err = poolMgr.fissionClient.Environments.Get(f.Spec.EnvironmentName)
+	env, err = poolMgr.fissionClient.Environments(poolMgr.fissionNs).Get(f.Spec.EnvironmentName)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +197,7 @@ func (poolMgr *Poolmgr) getServiceForFunction(m *api.ObjectMeta) (string, error)
 	return resp.address, resp.err
 }
 
-func (api *API) createServiceForFunction(m *fission.Metadata) (string, error) {
+func (poolMgr *Poolmgr) createServiceForFunction(m *api.ObjectMeta) (string, error) {
 	// None exists, so create a new funcSvc:
 	log.Printf("[%v] No cached function service found, creating one", m.Name)
 
@@ -244,9 +246,8 @@ func (poolMgr *Poolmgr) tapService(w http.ResponseWriter, r *http.Request) {
 
 func (poolMgr *Poolmgr) Serve(port int) {
 	r := mux.NewRouter()
-	r.HandleFunc("/v1/getServiceForFunction", poolMgr.getServiceForFunctionApi).Methods("POST")
-	r.HandleFunc("/v1/tapService", poolMgr.tapService).Methods("POST")
-
+	r.HandleFunc("/v2/getServiceForFunction", poolMgr.getServiceForFunctionApi).Methods("POST")
+	r.HandleFunc("/v2/tapService", poolMgr.tapService).Methods("POST")
 	address := fmt.Sprintf(":%v", port)
 	log.Printf("starting poolmgr at port %v", port)
 	log.Fatal(http.ListenAndServe(address, handlers.LoggingHandler(os.Stdout, r)))
