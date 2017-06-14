@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/1.5/pkg/util/intstr"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/poolmgr/client"
@@ -20,37 +21,37 @@ import (
 	"io/ioutil"
 )
 
-type MockController struct {
-	port int
-}
+// type MockController struct {
+// 	port int
+// }
 
-func MakeMockController(port int) *MockController {
-	funcBody := `
-module.exports = async function(context) {
-    return {
-        status: 200,
-        body: "Hello, world!\n"
-    };
-}
-`
-	mc := &MockController{port: port}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// ignore request, always respond with the same
-		// response. The mock controller is only used to get
-		// the function code.
-		log.Printf("Serving %v", r.URL)
-		_, err := w.Write([]byte(funcBody))
-		if err != nil {
-			log.Panicf("mock controller failed to write response: %v", err)
-		}
-	})
-	go http.ListenAndServe(fmt.Sprintf(":%v", mc.port), nil)
-	return mc
-}
+// func MakeMockController(port int) *MockController {
+// 	funcBody := `
+// module.exports = async function(context) {
+//     return {
+//         status: 200,
+//         body: "Hello, world!\n"
+//     };
+// }
+// `
+// 	mc := &MockController{port: port}
+// 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 		// ignore request, always respond with the same
+// 		// response. The mock controller is only used to get
+// 		// the function code.
+// 		log.Printf("Serving %v", r.URL)
+// 		_, err := w.Write([]byte(funcBody))
+// 		if err != nil {
+// 			log.Panicf("mock controller failed to write response: %v", err)
+// 		}
+// 	})
+// 	go http.ListenAndServe(fmt.Sprintf(":%v", mc.port), nil)
+// 	return mc
+// }
 
-func (mc *MockController) Url() string {
-	return fmt.Sprintf("http://localhost:%v", mc.port)
-}
+// func (mc *MockController) Url() string {
+// 	return fmt.Sprintf("http://localhost:%v", mc.port)
+// }
 
 // return the number of pods in the given namespace matching the given labels
 func countPods(kubeClient *kubernetes.Clientset, ns string, labelz map[string]string) int {
@@ -74,6 +75,30 @@ func createTestNamespace(kubeClient *kubernetes.Clientset, ns string) {
 	}
 }
 
+func createSvc(kubeClient *kubernetes.Clientset, ns string, name string, targetPort int, nodePort int32, labels map[string]string) *v1.Service {
+	svc, err := kubeClient.Services(ns).Create(&v1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1.ServiceSpec{
+			Type: v1.ServiceTypeNodePort,
+			Ports: []v1.ServicePort{
+				{
+					Protocol:   v1.ProtocolTCP,
+					Port:       80,
+					TargetPort: intstr.FromInt(targetPort), //8000/30001
+					NodePort:   nodePort,
+				},
+			},
+			Selector: labels,
+		},
+	})
+	if err != nil {
+		log.Panicf("Failed to create svc: %v", err)
+	}
+	return svc
+}
+
 func httpGet(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -91,8 +116,9 @@ func TestPoolmgr(t *testing.T) {
 	// run in a random namespace so we can have concurrent tests
 	// on a given cluster
 	rand.Seed(time.Now().UTC().UnixNano())
-	fissionNs := fmt.Sprintf("test-%v", rand.Intn(999))
-	functionNs := fmt.Sprintf("test-function-%v", rand.Intn(999))
+	testId := rand.Intn(999)
+	fissionNs := fmt.Sprintf("test-%v", testId)
+	functionNs := fmt.Sprintf("test-function-%v", testId)
 
 	// skip test if no cluster available for testing
 	kubeconfig := os.Getenv("KUBECONFIG")
@@ -103,7 +129,7 @@ func TestPoolmgr(t *testing.T) {
 
 	// connect to k8s
 	// and get TPR client
-	fissionClient, kubeClient, err := tpr.MakeFissionClient(fissionNs)
+	fissionClient, kubeClient, err := tpr.MakeFissionClient()
 	if err != nil {
 		log.Panicf("failed to connect: %v", err)
 	}
@@ -120,20 +146,20 @@ func TestPoolmgr(t *testing.T) {
 	if err != nil {
 		log.Panicf("failed to ensure tprs: %v", err)
 	}
-	//	tpr.WaitForTPRs(kubeClient)
+	//tpr.WaitForTPRs(kubeClient)
 
 	// create a mock controller for fetcher
-	mockController := MakeMockController(9000)
-	mcResp := httpGet(mockController.Url())
-	log.Printf("mock controller response: %v", mcResp)
+	// mockController := MakeMockController(9000)
+	// mcResp := httpGet(mockController.Url())
+	// log.Printf("mock controller response: %v", mcResp)
 
-	functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
-		mockController.Url(), "hi", "42")
-	mcResp = httpGet(functionUrl)
-	log.Printf("mock controller response: %v", mcResp)
+	// functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
+	// 	mockController.Url(), "hi", "42")
+	// mcResp = httpGet(functionUrl)
+	// log.Printf("mock controller response: %v", mcResp)
 
 	// create an env on the cluster
-	env, err := fissionClient.Environments.Create(&tpr.Environment{
+	env, err := fissionClient.Environments(fissionNs).Create(&tpr.Environment{
 		Metadata: api.ObjectMeta{
 			Name:      "nodejs",
 			Namespace: fissionNs,
@@ -152,7 +178,7 @@ func TestPoolmgr(t *testing.T) {
 
 	// create poolmgr
 	port := 9999
-	err = StartPoolmgr(mockController.Url(), fissionNs, functionNs, port)
+	err = StartPoolmgr("invalid-controller-url", fissionNs, functionNs, port)
 	if err != nil {
 		log.Panicf("failed to start poolmgr: %v", err)
 	}
@@ -163,6 +189,7 @@ func TestPoolmgr(t *testing.T) {
 	// Wait for pool to be created (we don't actually need to do
 	// this, since the API should do the right thing in any case).
 	// waitForPool(functionNs, "nodejs")
+	time.Sleep(6 * time.Second)
 
 	// create a function
 	f := &tpr.Function{
@@ -171,25 +198,37 @@ func TestPoolmgr(t *testing.T) {
 			Namespace: fissionNs,
 		},
 		Spec: fission.FunctionSpec{
-			Source:          fission.Package{},
-			Deployment:      fission.Package{},
+			Source: fission.Package{},
+			Deployment: fission.Package{
+				Type:    0,
+				Literal: []byte(`module.exports = async function(context) { return { status: 200, body: "Hello, world!\n" }; }`),
+			},
 			EnvironmentName: env.Metadata.Name,
 		},
 	}
-	_, err = fissionClient.Functions.Create(f)
+	_, err = fissionClient.Functions(fissionNs).Create(f)
 	if err != nil {
 		log.Panicf("failed to create function: %v", err)
 	}
 
+	// create a service to call fetcher and the env container
+	labels := map[string]string{"functionName": f.Metadata.Name}
+	fetcherSvc := createSvc(kubeClient, functionNs, fmt.Sprintf("%v-%v", f.Metadata.Name, "fetcher"), 8000, 30001, labels)
+	defer kubeClient.Services(functionNs).Delete(fetcherSvc.ObjectMeta.Name, nil)
+
+	functionSvc := createSvc(kubeClient, functionNs, f.Metadata.Name, 8888, 30002, labels)
+	defer kubeClient.Services(functionNs).Delete(functionSvc.ObjectMeta.Name, nil)
+
 	// the main test: get a service for a given function
+	t1 := time.Now()
 	svc, err := poolmgrClient.GetServiceForFunction(&f.Metadata)
 	if err != nil {
 		log.Panicf("failed to get func svc: %v", err)
 	}
-	log.Printf("svc for function created at: %v", svc)
+	log.Printf("svc for function created at: %v (in %v)", svc, time.Now().Sub(t1))
 
 	// ensure that a pod with the label functionName=f.Metadata.Name exists
-	podCount := countPods(kubeClient, functionNs, map[string]string{"funcName": f.Metadata.Name})
+	podCount := countPods(kubeClient, functionNs, map[string]string{"functionName": f.Metadata.Name})
 	if podCount != 1 {
 		log.Panicf("expected 1 function pod, found %v", podCount)
 	}

@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -38,6 +39,8 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/intstr"
 
 	"github.com/fission/fission"
+	"github.com/fission/fission/environments/fetcher"
+	fetcherClient "github.com/fission/fission/environments/fetcher/client"
 	"github.com/fission/fission/logger"
 	"github.com/fission/fission/tpr"
 )
@@ -57,6 +60,7 @@ type (
 		fsCache          *functionServiceCache // cache funcSvc's by function, address and podname
 		useSvc           bool                  // create k8s service for specialized pods
 		poolInstanceId   string                // small random string to uniquify pod names
+		fetcherImage     string
 		kubernetesClient *kubernetes.Clientset
 		instanceId       string // poolmgr instance id
 		labelsForPool    map[string]string
@@ -84,6 +88,12 @@ func MakeGenericPool(
 	instanceId string) (*GenericPool, error) {
 
 	log.Printf("Creating pool for environment %v", env.Metadata)
+
+	fetcherImage := os.Getenv("FETCHER_IMAGE")
+	if len(fetcherImage) == 0 {
+		fetcherImage = "fission/fetcher"
+	}
+
 	// TODO: in general we need to provide the user a way to configure pools.  Initial
 	// replicas, autoscaling params, various timeouts, etc.
 	gp := &GenericPool{
@@ -98,8 +108,8 @@ func MakeGenericPool(
 		fsCache:          fsCache,
 		poolInstanceId:   uniuri.NewLen(8),
 		instanceId:       instanceId,
-
-		useSvc: false, // defaults off -- svc takes a second or more to become routable, slowing cold start
+		fetcherImage:     fetcherImage,
+		useSvc:           false, // defaults off -- svc takes a second or more to become routable, slowing cold start
 	}
 
 	// Labels for generic deployment/RS/pods.
@@ -241,6 +251,24 @@ func (gp *GenericPool) scheduleDeletePod(name string) {
 	}()
 }
 
+func (gp *GenericPool) getFetcherUrl(podIP string) string {
+	url := os.Getenv("TEST_FETCHER_URL")
+	if len(url) == 0 {
+		return fmt.Sprintf("http://%v:8000/", podIP)
+	} else {
+		time.Sleep(5 * time.Second)
+	}
+	return url
+}
+
+func (gp *GenericPool) getSpecializeUrl(podIP string) string {
+	u := os.Getenv("TEST_SPECIALIZE_URL")
+	if len(u) == 0 {
+		return fmt.Sprintf("http://%v:8888/specialize", podIP)
+	}
+	return u
+}
+
 // specializePod chooses a pod, copies the required user-defined function to that pod
 // (via fetcher), and calls the function-run container to load it, resulting in a
 // specialized pod.
@@ -252,20 +280,15 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *api.ObjectMeta) erro
 	}
 
 	// tell fetcher to get the function.
-	fetcherUrl := fmt.Sprintf("http://%v:8000/", podIP)
-	functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
-		gp.controllerUrl, metadata.Name, metadata.UID)
-	fetcherRequest := fmt.Sprintf("{\"url\": \"%v\", \"filename\": \"user\"}", functionUrl)
-
+	fetcherUrl := gp.getFetcherUrl(podIP)
 	log.Printf("[%v] calling fetcher to copy function", metadata.Name)
-	resp, err := http.Post(fetcherUrl, "application/json", bytes.NewReader([]byte(fetcherRequest)))
+	err := fetcherClient.DoFetchRequest(fetcherUrl, &fetcher.FetchRequest{
+		FetchType: fetcher.FETCH_DEPLOYMENT,
+		Function:  *metadata,
+		Filename:  "user", // XXX use function id instead
+	})
 	if err != nil {
-		// TODO we should retry this call in case fetcher hasn't come up yet
 		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Error from fetcher: %v", resp.Status))
 	}
 
 	// Tell logging helper about this function invocation
@@ -273,7 +296,7 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *api.ObjectMeta) erro
 
 	// get function run container to specialize
 	log.Printf("[%v] specializing pod", metadata.Name)
-	specializeUrl := fmt.Sprintf("http://%v:8888/specialize", podIP)
+	specializeUrl := gp.getSpecializeUrl(podIP)
 
 	// retry the specialize call a few times in case the env server hasn't come up yet
 	maxRetries := 20
@@ -353,7 +376,7 @@ func (gp *GenericPool) createPool() error {
 						},
 						{
 							Name:                   "fetcher",
-							Image:                  "fission/fetcher",
+							Image:                  gp.fetcherImage,
 							ImagePullPolicy:        v1.PullIfNotPresent,
 							TerminationMessagePath: "/dev/termination-log",
 							VolumeMounts: []v1.VolumeMount{
