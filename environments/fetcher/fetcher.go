@@ -1,4 +1,4 @@
-package main
+package fetcher
 
 import (
 	"crypto/sha256"
@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
@@ -20,13 +21,14 @@ import (
 )
 
 type (
-	FetchRequestType string
+	FetchRequestType int
 
 	FetchRequest struct {
-		fetchType FetchRequestType `json:"fetchType"`
-		function  api.ObjectMeta   `json:"function"`
-		Url       string           `json:"url"`
-		Filename  string           `json:"filename"`
+		FetchType     FetchRequestType `json:"fetchType"`
+		Function      api.ObjectMeta   `json:"function"`
+		Url           string           `json:"url"`
+		StorageSvcUrl string           `json:"storagesvcurl"`
+		Filename      string           `json:"filename"`
 	}
 
 	Fetcher struct {
@@ -37,9 +39,9 @@ type (
 )
 
 const (
-	FETCH_SOURCE     = "source"
-	FETCH_DEPLOYMENT = "deployment"
-	FETCH_URL        = "url" // remove this?
+	FETCH_SOURCE = iota
+	FETCH_DEPLOYMENT
+	FETCH_URL // remove this?
 )
 
 func MakeFetcher(sharedVolumePath string) *Fetcher {
@@ -98,11 +100,17 @@ func verifyChecksum(path string, checksum *fission.Checksum) error {
 	return nil
 }
 
-func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
+func (fetcher *Fetcher) Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "", 404)
 		return
 	}
+
+	startTime := time.Now()
+	defer func() {
+		elapsed := time.Now().Sub(startTime)
+		log.Printf("elapsed time in fetch request = %v", elapsed)
+	}()
 
 	// parse request
 	body, err := ioutil.ReadAll(r.Body)
@@ -118,12 +126,12 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	log.Printf("fetcher request: %v", req)
+	log.Printf("fetcher received request: %v", req)
 
 	tmpFile := req.Filename + ".tmp"
 	tmpPath := filepath.Join(fetcher.sharedVolumePath, tmpFile)
 
-	if req.fetchType == FETCH_URL {
+	if req.FetchType == FETCH_URL {
 		// fetch the file and save it to the tmp path
 		err := downloadUrl(req.Url, tmpPath)
 		if err != nil {
@@ -134,7 +142,7 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// get function object
-		fn, err := fetcher.fissionClient.Functions(req.function.Namespace).Get(req.function.Name)
+		fn, err := fetcher.fissionClient.Functions(req.Function.Namespace).Get(req.Function.Name)
 		if err != nil {
 			e := fmt.Sprintf("Failed to get function: %v", err)
 			log.Printf(e)
@@ -144,9 +152,9 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 
 		// get pkg
 		var pkg *fission.Package
-		if req.fetchType == FETCH_SOURCE {
+		if req.FetchType == FETCH_SOURCE {
 			pkg = &fn.Spec.Source
-		} else if req.fetchType == FETCH_DEPLOYMENT {
+		} else if req.FetchType == FETCH_DEPLOYMENT {
 			pkg = &fn.Spec.Deployment
 		}
 
@@ -191,23 +199,7 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Completed fetch request")
 	// all done
 	w.WriteHeader(http.StatusOK)
-}
-
-// Usage: fetcher <shared volume path>
-func main() {
-	dir := os.Args[1]
-	if _, err := os.Stat(dir); err != nil {
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(dir, os.ModeDir|0700)
-			if err != nil {
-				log.Fatalf("Error creating directory: %v", err)
-			}
-		}
-	}
-	fetcher := MakeFetcher(dir)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", fetcher.handler)
-	http.ListenAndServe(":8000", mux)
 }
