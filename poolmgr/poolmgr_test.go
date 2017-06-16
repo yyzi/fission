@@ -1,3 +1,25 @@
+//
+// This test depends on several env vars:
+//
+//   KUBECONFIG has to point at a kube config with a cluster. The test
+//      will use the default context from that config. Be careful,
+//      don't point this at your production environment. The test is
+//      skipped if KUBECONFIG is undefined.
+//
+//   TEST_SPECIALIZE_URL
+//   TEST_FETCHER_URL
+//      These need to point at <node ip>:30001 and <node ip>:30002,
+//      where <node ip> is the address of any node in the test
+//      cluster.
+//
+//   FETCHER_IMAGE
+//      Optional. Set this to a fetcher image; otherwise uses the
+//      default.
+//
+
+// Here's how I run this on my setup, with minikube:
+// TEST_SPECIALIZE_URL=http://192.168.99.100:30002/specialize TEST_FETCHER_URL=http://192.168.99.100:30001 FETCHER_IMAGE=minikube/fetcher:testing KUBECONFIG=/Users/soam/.kube/config go test -v .
+
 package poolmgr
 
 import (
@@ -21,38 +43,6 @@ import (
 	"io/ioutil"
 )
 
-// type MockController struct {
-// 	port int
-// }
-
-// func MakeMockController(port int) *MockController {
-// 	funcBody := `
-// module.exports = async function(context) {
-//     return {
-//         status: 200,
-//         body: "Hello, world!\n"
-//     };
-// }
-// `
-// 	mc := &MockController{port: port}
-// 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-// 		// ignore request, always respond with the same
-// 		// response. The mock controller is only used to get
-// 		// the function code.
-// 		log.Printf("Serving %v", r.URL)
-// 		_, err := w.Write([]byte(funcBody))
-// 		if err != nil {
-// 			log.Panicf("mock controller failed to write response: %v", err)
-// 		}
-// 	})
-// 	go http.ListenAndServe(fmt.Sprintf(":%v", mc.port), nil)
-// 	return mc
-// }
-
-// func (mc *MockController) Url() string {
-// 	return fmt.Sprintf("http://localhost:%v", mc.port)
-// }
-
 // return the number of pods in the given namespace matching the given labels
 func countPods(kubeClient *kubernetes.Clientset, ns string, labelz map[string]string) int {
 	pods, err := kubeClient.Pods(ns).List(api.ListOptions{
@@ -75,6 +65,7 @@ func createTestNamespace(kubeClient *kubernetes.Clientset, ns string) {
 	}
 }
 
+// create a nodeport service
 func createSvc(kubeClient *kubernetes.Clientset, ns string, name string, targetPort int, nodePort int32, labels map[string]string) *v1.Service {
 	svc, err := kubeClient.Services(ns).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{
@@ -86,7 +77,7 @@ func createSvc(kubeClient *kubernetes.Clientset, ns string, name string, targetP
 				{
 					Protocol:   v1.ProtocolTCP,
 					Port:       80,
-					TargetPort: intstr.FromInt(targetPort), //8000/30001
+					TargetPort: intstr.FromInt(targetPort),
 					NodePort:   nodePort,
 				},
 			},
@@ -146,17 +137,7 @@ func TestPoolmgr(t *testing.T) {
 	if err != nil {
 		log.Panicf("failed to ensure tprs: %v", err)
 	}
-	//tpr.WaitForTPRs(kubeClient)
-
-	// create a mock controller for fetcher
-	// mockController := MakeMockController(9000)
-	// mcResp := httpGet(mockController.Url())
-	// log.Printf("mock controller response: %v", mcResp)
-
-	// functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
-	// 	mockController.Url(), "hi", "42")
-	// mcResp = httpGet(functionUrl)
-	// log.Printf("mock controller response: %v", mcResp)
+	tpr.WaitForTPRs(kubeClient)
 
 	// create an env on the cluster
 	env, err := fissionClient.Environments(fissionNs).Create(&tpr.Environment{
@@ -200,7 +181,7 @@ func TestPoolmgr(t *testing.T) {
 		Spec: fission.FunctionSpec{
 			Source: fission.Package{},
 			Deployment: fission.Package{
-				Type:    0,
+				Type:    fission.PackageTypeLiteral,
 				Literal: []byte(`module.exports = async function(context) { return { status: 200, body: "Hello, world!\n" }; }`),
 			},
 			EnvironmentName: env.Metadata.Name,
@@ -213,10 +194,12 @@ func TestPoolmgr(t *testing.T) {
 
 	// create a service to call fetcher and the env container
 	labels := map[string]string{"functionName": f.Metadata.Name}
-	fetcherSvc := createSvc(kubeClient, functionNs, fmt.Sprintf("%v-%v", f.Metadata.Name, "fetcher"), 8000, 30001, labels)
+	var fetcherPort int32 = 30001
+	fetcherSvc := createSvc(kubeClient, functionNs, fmt.Sprintf("%v-%v", f.Metadata.Name, "fetcher"), 8000, fetcherPort, labels)
 	defer kubeClient.Services(functionNs).Delete(fetcherSvc.ObjectMeta.Name, nil)
 
-	functionSvc := createSvc(kubeClient, functionNs, f.Metadata.Name, 8888, 30002, labels)
+	var funcSvcPort int32 = 30002
+	functionSvc := createSvc(kubeClient, functionNs, f.Metadata.Name, 8888, funcSvcPort, labels)
 	defer kubeClient.Services(functionNs).Delete(functionSvc.ObjectMeta.Name, nil)
 
 	// the main test: get a service for a given function
