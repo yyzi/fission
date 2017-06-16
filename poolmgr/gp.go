@@ -252,21 +252,23 @@ func (gp *GenericPool) scheduleDeletePod(name string) {
 }
 
 func (gp *GenericPool) getFetcherUrl(podIP string) string {
-	url := os.Getenv("TEST_FETCHER_URL")
-	if len(url) == 0 {
-		return fmt.Sprintf("http://%v:8000/", podIP)
-	} else {
+	testUrl := os.Getenv("TEST_FETCHER_URL")
+	if len(testUrl) != 0 {
+		// it takes a second or so for the test service to
+		// become routable once a pod is relabeled. This is
+		// super hacky, but only runs in unit tests.
 		time.Sleep(5 * time.Second)
+		return testUrl
 	}
-	return url
+	return fmt.Sprintf("http://%v:8000/", podIP)
 }
 
 func (gp *GenericPool) getSpecializeUrl(podIP string) string {
 	u := os.Getenv("TEST_SPECIALIZE_URL")
-	if len(u) == 0 {
-		return fmt.Sprintf("http://%v:8888/specialize", podIP)
+	if len(u) != 0 {
+		return u
 	}
-	return u
+	return fmt.Sprintf("http://%v:8888/specialize", podIP)
 }
 
 // specializePod chooses a pod, copies the required user-defined function to that pod
