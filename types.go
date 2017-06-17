@@ -36,39 +36,57 @@ type (
 	}
 
 	//
-	// Functions
+	// Functions and packages
 	//
 
-	// Used to checksum the contents of a package when it is
-	// stored outside the Package struct.  Type is the checksum
-	// algorithm; "sha256" is the only currently supported
-	// one. Sum is hex encoded.
+	// Checksum of package contents when the contents are stored
+	// outside the Package struct. Type is the checksum algorithm;
+	// "sha256" is the only currently supported one. Sum is hex
+	// encoded.
 	Checksum struct {
-		Type string `json:"checksumType"`
-		Sum  string `json:"checksum"`
+		Type string `json:"type"`
+		Sum  string `json:"sum"`
 	}
+
+	PackageType string
 
 	// Package contains or references a collection of source or
 	// binary files.
 	Package struct {
-		// Literal contents of the package.  Can be used for
+		// Type specifies how the package is stored: literal, URL, etc.
+		Type PackageType `json:"type"`
+
+		// Literal contents of the package. Can be used for
 		// encoding packages below TODO (256KB?) size.
 		Literal []byte `json:"literal"`
 
-		// Reference to a package, with a checksum.
-		URL      string   `json:"url"`
+		// URL references a package.
+		URL string `json:"url"`
+
+		// Checksum ensures the integrity of packages
+		// refereced by URL. Ignored for literals.
 		Checksum Checksum `json:"checksum"`
 
-		// Optional entry point in the package. Each
-		// environment defines a default function entry point
-		// name, but its name can be overridden here.
-		entryPoint string `json:"entrypoint"`
+		// EntryPoint optionally specifies an entry point in
+		// the package. Each environment defines a default
+		// entry point, but that can be overridden here.
+		EntryPoint string `json:"entrypoint"`
 	}
 
+	// FunctionSpec describes the contents of the function.
 	FunctionSpec struct {
-		Source          Package `json:"source"`
-		Deployment      Package `json:"deployment"`
-		EnvironmentName string  `json:"environmentName"`
+		// EnvironmentName is the name of the environment that this function is associated
+		// with. An Environment with this name should exist, otherwise the function cannot
+		// be invoked.
+		EnvironmentName string `json:"environmentName"`
+
+		// Source is an source package for this function; it's used for the build step if
+		// the environment defines a build container.
+		Source Package `json:"source"`
+
+		// Deployment is a deployable package for this function. This is the package that's
+		// loaded into the environment's runtime container.
+		Deployment Package `json:"deployment"`
 	}
 
 	Function struct {
@@ -77,10 +95,12 @@ type (
 	}
 
 	FunctionReference struct {
-		// Selector selects a function by labels.  Functions
-		// have auto-assigned name, uid, and version labels in
-		// addition to user labels.
-		Selector map[string]string `json:"selector"`
+		// Type indicates whether this function reference is by name or selector. For now,
+		// the only supported reference type is by name.
+		Type FunctionReferenceType `json:"type"`
+
+		// Name of the function.
+		Name string `json:"name"`
 	}
 
 	//
@@ -163,6 +183,20 @@ type (
 	}
 
 	errorCode int
+)
+
+const (
+	// PackageTypeLiteral means the package contents are specified in the Literal field of
+	// resource itself.
+	PackageTypeLiteral PackageType = "literal"
+
+	// PackageTypeUrl means the package contents are at the specified URL.
+	PackageTypeUrl PackageType = "url"
+)
+
+const (
+	// FunctionReferenceTypeName means that the function reference is simply by name.
+	FunctionReferenceTypeName = "name"
 )
 
 const (
