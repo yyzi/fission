@@ -17,22 +17,29 @@ limitations under the License.
 package fission
 
 type (
-	// Metadata is used as the general identifier for all kinds of
-	// resources managed by the controller.
+	// Metadata for any resource. This is compatible with
+	// Kubernetes API's v1.ObjectMeta. Only a subset (XXX) of
+	// these fields are used in the Fission API; the rest are
+	// included for type compatibility.
 	//
-	// Name is mutable. Uid is immutable. Version must be updated
-	// on any change to the object.  (Uid, Version) uniquely
-	// identifies the contents of the object.
-	//
-	// Labels are entirely optional; they're for higher level
-	// tools to organize functions or attach information to them.
+	// See Kubernetes API docs for documentation on the meanings
+	// of these fields.
 	Metadata struct {
-		Name        string            `json:"name"`
-		Namespace   string            `json:"namespace,omitempty"`
-		Uid         string            `json:"uid,omitempty"`
-		Version     string            `json:"version,omitempty"`
-		Labels      map[string]string `json:"labels,omitempty"`
-		Annotations map[string]string `json:"annotations,omitempty"`
+		Name                       string            `json:"name,omitempty"`
+		GenerateName               string            `json:"generateName,omitempty"`
+		Namespace                  string            `json:"namespace,omitempty"`
+		SelfLink                   string            `json:"selfLink,omitempty"`
+		UID                        types.UID         `json:"uid,omitempty"`
+		ResourceVersion            string            `json:"resourceVersion,omitempty"`
+		Generation                 int64             `json:"generation,omitempty"`
+		CreationTimestamp          unversioned.Time  `json:"creationTimestamp,omitempty"`
+		DeletionTimestamp          *unversioned.Time `json:"deletionTimestamp,omitempty"`
+		DeletionGracePeriodSeconds *int64            `json:"deletionGracePeriodSeconds,omitempty"`
+		Labels                     map[string]string `json:"labels,omitempty"`
+		Annotations                map[string]string `json:"annotations,omitempty"`
+		OwnerReferences            []OwnerReference  `json:"ownerReferences,omitempty"`
+		Finalizers                 []string          `json:"finalizers,omitempty"`
+		ClusterName                string            `json:"clusterName,omitempty"`
 	}
 
 	//
@@ -48,12 +55,15 @@ type (
 		Sum  string `json:"sum"`
 	}
 
+	// PackageType is either literal or URL, indicating whether
+	// the package is specified in the Package struct or
+	// externally.
 	PackageType string
 
 	// Package contains or references a collection of source or
 	// binary files.
 	Package struct {
-		// Type specifies how the package is stored: literal, URL, etc.
+		// Type defines how the package is specified: literal or URL.
 		Type PackageType `json:"type"`
 
 		// Literal contents of the package. Can be used for
@@ -96,7 +106,10 @@ type (
 
 	FunctionReference struct {
 		// Type indicates whether this function reference is by name or selector. For now,
-		// the only supported reference type is by name.
+		// the only supported reference type is by name.  Future reference types:
+		//   * Function by label or annotation
+		//   * Branch or tag of a versioned function
+		//   * A "rolling upgrade" from one version of a function to another
 		Type FunctionReferenceType `json:"type"`
 
 		// Name of the function.
@@ -108,7 +121,23 @@ type (
 	//
 
 	Runtime struct {
+		// Image for containing the language runtime.
 		Image string `json:"image"`
+
+		// LoadEndpointPort defines the port on which the
+		// server listens for function load
+		// requests. Optional; default 8888.
+		LoadEndpointPort int32 `json:"loadendpointport"`
+
+		// LoadEndpointPath defines the relative URL on which
+		// the server listens for function load
+		// requests. Optional; default "/specialize".
+		LoadEndpointPath string `json:"loadendpointpath"`
+
+		// FunctionEndpointPort defines the port on which the
+		// server listens for function requests. Optional;
+		// default 8888.
+		FunctionEndpointPort int32 `json:"functionendpointport"`
 	}
 	Builder struct {
 		Image   string `json:"image"`
@@ -123,6 +152,10 @@ type (
 
 		// Optional
 		Builder Builder `json:"builder"`
+
+		// Optional, but strongly encouraged. Used to populate
+		// links from UI, CLI, etc.
+		DocumentationURL string `json:"documentationurl"`
 	}
 	Environment struct {
 		Metadata
@@ -183,6 +216,28 @@ type (
 	}
 
 	errorCode int
+
+	//
+	// Fission-Environment interface. The following types are not
+	// exposed in the Fission API, but rather used by Fission to
+	// talk to environments.
+	//
+	FunctionLoadRequest struct {
+		// FilePath is an absolute filesystem path to the
+		// function. What exactly is stored here is
+		// env-specific. Optional.
+		FilePath string `json:"filepath"`
+
+		// Entrypoint has an environment-specific meaning;
+		// usually, it defines a function within a module
+		// containing multiple functions. Optional; default is
+		// environment-specific.
+		EntryPoint string `json:"entrypoint"`
+
+		// URL to expose this function at. Optional; defaults
+		// to "/".
+		URL string `json:"url"`
+	}
 )
 
 const (
@@ -195,8 +250,9 @@ const (
 )
 
 const (
-	// FunctionReferenceTypeName means that the function reference is simply by name.
-	FunctionReferenceTypeName = "name"
+	// FunctionReferenceFunctionName means that the function
+	// reference is simply by function name.
+	FunctionReferenceTypeFunctionName = "name"
 )
 
 const (
@@ -208,7 +264,6 @@ const (
 	ErrorInvalidArgument
 	ErrorNoSpace
 	ErrorNotImplmented
-	ErrorTypeTranslation
 	ErrorChecksumFail
 )
 
@@ -221,4 +276,5 @@ var errorDescriptions = []string{
 	"Invalid argument",
 	"No space",
 	"Not implemented",
+	"Checksum verification failed",
 }
