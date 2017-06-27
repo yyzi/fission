@@ -84,16 +84,16 @@ func MetadataFromTPR(t_metadata *api.ObjectMeta) *fission.Metadata {
 
 	os := make([]fission.OwnerReference, 0)
 	for _, o := range t_metadata.OwnerReferences {
-		os := append(os, *OwnerReferenceFromTPR(&o))
+		os = append(os, *OwnerReferenceFromTPR(&o))
 	}
 	m.OwnerReferences = os
 
 	return &m
 }
 
-// MetadataFromTPR translates a Fission API metadata object to a
+// MetadataToTPR translates a Fission API metadata object to a
 // Kubernetes API metadata object.
-func MetadataToTPR(m *api.ObjectMeta) *api.ObjectMeta {
+func MetadataToTPR(m *fission.Metadata) *api.ObjectMeta {
 	t_m := api.ObjectMeta{
 		Name:              m.Name,
 		GenerateName:      m.GenerateName,
@@ -117,7 +117,7 @@ func MetadataToTPR(m *api.ObjectMeta) *api.ObjectMeta {
 
 	os := make([]api.OwnerReference, 0)
 	for _, o := range m.OwnerReferences {
-		os := append(os, *OwnerReferenceToTPR(&o))
+		os = append(os, *OwnerReferenceToTPR(&o))
 	}
 	t_m.OwnerReferences = os
 
@@ -136,7 +136,6 @@ func FunctionToTPR(f_function *fission.Function) *Function {
 		Metadata: *MetadataToTPR(&f_function.Metadata),
 		Spec:     f_function.Spec,
 	}
-	return t_function
 }
 
 func FunctionListFromTPR(t_functions *FunctionList) []fission.Function {
@@ -155,9 +154,18 @@ func EnvironmentFromTPR(t_environment *Environment) *fission.Environment {
 }
 
 func EnvironmentToTPR(f_environment *fission.Environment) *Environment {
+	return &Environment{
+		Metadata: *MetadataToTPR(&f_environment.Metadata),
+		Spec:     f_environment.Spec,
+	}
 }
 
 func EnvironmentListFromTPR(t_environments *EnvironmentList) []fission.Environment {
+	fs := make([]fission.Environment, len(t_environments.Items))
+	for _, t := range t_environments.Items {
+		fs = append(fs, *EnvironmentFromTPR(&t))
+	}
+	return fs
 }
 
 func HttpTriggerFromTPR(t_httptrigger *Httptrigger) *fission.HTTPTrigger {
@@ -168,20 +176,38 @@ func HttpTriggerFromTPR(t_httptrigger *Httptrigger) *fission.HTTPTrigger {
 }
 
 func HttpTriggerToTPR(f_httptrigger *fission.HTTPTrigger) *Httptrigger {
+	return &Httptrigger{
+		Metadata: *MetadataToTPR(&f_httptrigger.Metadata),
+		Spec:     f_httptrigger.Spec,
+	}
 }
 
-func HttpTriggerListFromTPR(t_httpTriggers *HttptriggerList) []fission.HTTPTrigger {
+func HttpTriggerListFromTPR(t_httptriggers *HttptriggerList) []fission.HTTPTrigger {
+	fs := make([]fission.HTTPTrigger, len(t_httptriggers.Items))
+	for _, t := range t_httptriggers.Items {
+		fs = append(fs, *HttpTriggerFromTPR(&t))
+	}
+	return fs
 }
 
 func KubernetesWatchTriggerFromTPR(t_kuberneteswatchtrigger *Kuberneteswatchtrigger) *fission.KubernetesWatchTrigger {
-	return &fission.Function{
-		Metadata: *MetadataFromTPR(&t_function.Metadata),
-		Spec:     t_function.Spec,
+	return &fission.KubernetesWatchTrigger{
+		Metadata: *MetadataFromTPR(&t_kuberneteswatchtrigger.Metadata),
+		Spec:     t_kuberneteswatchtrigger.Spec,
 	}
 }
 
 func KubernetesWatchTriggerToTPR(f_kuberneteswatchtrigger *fission.KubernetesWatchTrigger) *Kuberneteswatchtrigger {
+	return &Kuberneteswatchtrigger{
+		Metadata: *MetadataToTPR(&f_kuberneteswatchtrigger.Metadata),
+		Spec:     f_kuberneteswatchtrigger.Spec,
+	}
 }
 
-func KubernetesWatchTriggerListFromTPR(t_kubernetesWatchTriggers *KuberneteswatchtriggerList) []fission.KubernetesWatchTrigger {
+func KubernetesWatchTriggerListFromTPR(t_kuberneteswatchtriggers *KuberneteswatchtriggerList) []fission.KubernetesWatchTrigger {
+	fs := make([]fission.KubernetesWatchTrigger, len(t_kuberneteswatchtriggers.Items))
+	for _, t := range t_kuberneteswatchtriggers.Items {
+		fs = append(fs, *KubernetesWatchTriggerFromTPR(&t))
+	}
+	return fs
 }
