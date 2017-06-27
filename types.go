@@ -22,24 +22,32 @@ type (
 	// these fields are used in the Fission API; the rest are
 	// included for type compatibility.
 	//
-	// See Kubernetes API docs for documentation on the meanings
-	// of these fields.
+	// See Kubernetes API docs for documentation of these fields.
 	Metadata struct {
 		Name                       string            `json:"name,omitempty"`
 		GenerateName               string            `json:"generateName,omitempty"`
 		Namespace                  string            `json:"namespace,omitempty"`
 		SelfLink                   string            `json:"selfLink,omitempty"`
-		UID                        types.UID         `json:"uid,omitempty"`
+		UID                        string            `json:"uid,omitempty"`
 		ResourceVersion            string            `json:"resourceVersion,omitempty"`
 		Generation                 int64             `json:"generation,omitempty"`
-		CreationTimestamp          unversioned.Time  `json:"creationTimestamp,omitempty"`
-		DeletionTimestamp          *unversioned.Time `json:"deletionTimestamp,omitempty"`
+		CreationTimestamp          Time              `json:"creationTimestamp,omitempty"`
+		DeletionTimestamp          *Time             `json:"deletionTimestamp,omitempty"`
 		DeletionGracePeriodSeconds *int64            `json:"deletionGracePeriodSeconds,omitempty"`
 		Labels                     map[string]string `json:"labels,omitempty"`
 		Annotations                map[string]string `json:"annotations,omitempty"`
 		OwnerReferences            []OwnerReference  `json:"ownerReferences,omitempty"`
 		Finalizers                 []string          `json:"finalizers,omitempty"`
 		ClusterName                string            `json:"clusterName,omitempty"`
+	}
+
+	// From K8s types, compatible with v1.OwnerReference
+	OwnerReference struct {
+		APIVersion string `json:"apiVersion" protobuf:"bytes,5,opt,name=apiVersion"`
+		Kind       string `json:"kind" protobuf:"bytes,1,opt,name=kind"`
+		Name       string `json:"name" protobuf:"bytes,3,opt,name=name"`
+		UID        string `json:"uid" protobuf:"bytes,4,opt,name=uid,casttype=k8s.io/kubernetes/pkg/types.UID"`
+		Controller *bool  `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
 	}
 
 	//
@@ -103,6 +111,8 @@ type (
 		Metadata
 		Spec FunctionSpec
 	}
+
+	FunctionReferenceType string
 
 	FunctionReference struct {
 		// Type indicates whether this function reference is by name or selector. For now,

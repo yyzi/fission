@@ -19,228 +19,169 @@ package tpr
 import (
 	//"github.com/satori/go.uuid"
 	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/types"
 
 	"github.com/fission/fission"
 )
 
 /*
 
-Throughout this file, instances of fission types have the "f_" prefix
-in their name, and instances of TPR types have the "t_" prefix.
-
-We don't follow that convention anywhere else, just in this file.
+Throughout this file, instances of TPR types have the "t_" prefix.
+Vars with the f_ prefix are fission types.  We don't follow that
+convention anywhere else, just in this file.
 
 */
 
+func OwnerReferenceFromTPR(t_o *api.OwnerReference) *fission.OwnerReference {
+	o := &fission.OwnerReference{
+		APIVersion: t_o.APIVersion,
+		Kind:       t_o.Kind,
+		Name:       t_o.Name,
+		UID:        string(t_o.UID),
+	}
+	b := *t_o.Controller
+	o.Controller = &b
+	return o
+}
+
+func OwnerReferenceToTPR(o *fission.OwnerReference) *api.OwnerReference {
+	t_o := &api.OwnerReference{
+		APIVersion: o.APIVersion,
+		Kind:       o.Kind,
+		Name:       o.Name,
+		UID:        types.UID(o.UID),
+	}
+
+	b := *t_o.Controller
+	t_o.Controller = &b
+	return t_o
+}
+
 // MetadataFromTPR translates a Kubernetes API metadata object to a
 // Fission API metadata object.
-func MetadataFromTPR(t_metadata *api.ObjectMeta) (*fission.Metadata, error) {
-	labels := t_metadata.Labels
-
-	name, ok := labels["fission-name"]
-	if !ok {
-		return nil, fission.MakeError(fission.ErrorTypeTranslation, "Missing annotation: fission.io/name")
+func MetadataFromTPR(t_metadata *api.ObjectMeta) *fission.Metadata {
+	m := fission.Metadata{
+		Name:              t_metadata.Name,
+		GenerateName:      t_metadata.GenerateName,
+		Namespace:         t_metadata.Namespace,
+		SelfLink:          t_metadata.SelfLink,
+		UID:               string(t_metadata.UID),
+		ResourceVersion:   t_metadata.ResourceVersion,
+		Generation:        t_metadata.Generation,
+		CreationTimestamp: fission.Time(t_metadata.CreationTimestamp),
+		Labels:            t_metadata.Labels,
+		Annotations:       t_metadata.Annotations,
+		Finalizers:        t_metadata.Finalizers,
+		ClusterName:       t_metadata.ClusterName,
 	}
 
-	uid, ok := labels["fission-uid"]
-	if !ok {
-		return nil, fission.MakeError(fission.ErrorTypeTranslation, "Missing annotation: fission.io/uid")
-	}
+	t := fission.Time(*t_metadata.DeletionTimestamp)
+	m.DeletionTimestamp = &t
 
-	version, ok := labels["fission-version"]
-	if !ok {
-		return nil, fission.MakeError(fission.ErrorTypeTranslation, "Missing annotation: fission.io/version")
-	}
+	s := *t_metadata.DeletionGracePeriodSeconds
+	m.DeletionGracePeriodSeconds = &s
 
-	m := &fission.Metadata{
-		Name:        name,
-		Uid:         uid,
-		Version:     version,
-		Labels:      labels,
-		Annotations: t_metadata.Annotations,
+	os := make([]fission.OwnerReference, 0)
+	for _, o := range t_metadata.OwnerReferences {
+		os := append(os, *OwnerReferenceFromTPR(&o))
 	}
-	return m, nil
+	m.OwnerReferences = os
+
+	return &m
 }
 
-// MetadataToTPR translates a fission metadata object to a Kubernetes
-// metadata object.  If the t_metadata parameter is provided, its
-// labels and annotations are merged with the f_metadata parameter's
-// labels and annotations (f_metadata overrides).
-//
-// We store fission identifying metadata in labels rather than
-// annotations, because we need to query by name, uid, and version.
-func MetadataToTPR(f_metadata *fission.Metadata, t_metadata *api.ObjectMeta) *api.ObjectMeta {
-	var t_m api.ObjectMeta
-
-	// K8s requires unique names, but we may have multiple
-	// versions of the same object. So we use the f_metadata UID
-	// as the TPR's name.
-	t_m.Name = f_metadata.Uid
-
-	// Annotations: preserve existing annotations; merge fission
-	// metadata annotations into the tpr object.
-	var annotations map[string]string
-	if t_metadata != nil {
-		for k, v := range t_metadata.Annotations {
-			annotations[k] = v
-		}
+// MetadataFromTPR translates a Fission API metadata object to a
+// Kubernetes API metadata object.
+func MetadataToTPR(m *api.ObjectMeta) *api.ObjectMeta {
+	t_m := api.ObjectMeta{
+		Name:              m.Name,
+		GenerateName:      m.GenerateName,
+		Namespace:         m.Namespace,
+		SelfLink:          m.SelfLink,
+		UID:               types.UID(m.UID),
+		ResourceVersion:   m.ResourceVersion,
+		Generation:        m.Generation,
+		CreationTimestamp: unversioned.Time(m.CreationTimestamp),
+		Labels:            m.Labels,
+		Annotations:       m.Annotations,
+		Finalizers:        m.Finalizers,
+		ClusterName:       m.ClusterName,
 	}
-	for k, v := range f_metadata.Annotations {
-		annotations[k] = v
-	}
-	t_m.Annotations = annotations
 
-	// Preserve existing labels, store our metadata as labels, and
-	// merge fission metadata labels
-	var labels map[string]string
-	if t_metadata != nil {
-		for k, v := range t_metadata.Labels {
-			labels[k] = v
-		}
-	}
-	labels = map[string]string{
-		"fission-name":    f_metadata.Name,
-		"fission-uid":     f_metadata.Uid,
-		"fission-version": f_metadata.Version,
-	}
-	for k, v := range f_metadata.Labels {
-		labels[k] = v
-	}
-	t_m.Labels = labels
+	t := unversioned.Time(*m.DeletionTimestamp)
+	t_m.DeletionTimestamp = &t
 
-	// Namespace
-	t_m.Namespace = f_metadata.Namespace
+	s := *m.DeletionGracePeriodSeconds
+	t_m.DeletionGracePeriodSeconds = &s
 
-	return t_metadata
+	os := make([]api.OwnerReference, 0)
+	for _, o := range m.OwnerReferences {
+		os := append(os, *OwnerReferenceToTPR(&o))
+	}
+	t_m.OwnerReferences = os
+
+	return &t_m
 }
 
-func FunctionFromTPR(t_function *Function) (*fission.Function, error) {
-	metadata, err := MetadataFromTPR(&t_function.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	f_function := &fission.Function{
-		Metadata: *metadata,
+func FunctionFromTPR(t_function *Function) *fission.Function {
+	return &fission.Function{
+		Metadata: *MetadataFromTPR(&t_function.Metadata),
 		Spec:     t_function.Spec,
 	}
-	return f_function, nil
 }
 
-func FunctionToTPR(f_function *fission.Function, t_metadata *api.ObjectMeta) *Function {
-	t_function := &Function{
-		Metadata: *MetadataToTPR(&f_function.Metadata, t_metadata),
+func FunctionToTPR(f_function *fission.Function) *Function {
+	return &Function{
+		Metadata: *MetadataToTPR(&f_function.Metadata),
 		Spec:     f_function.Spec,
 	}
 	return t_function
 }
 
-func FunctionListFromTPR(t_functions *FunctionList) (*[]fission.Function, error) {
-	f_functions := make([]fission.Function, len(t_functions.Items))
-	for _, t_f := range t_functions.Items {
-		f_f, err := FunctionFromTPR(&t_f)
-		if err != nil {
-			return nil, err
-		}
-		f_functions = append(f_functions, *f_f)
+func FunctionListFromTPR(t_functions *FunctionList) []fission.Function {
+	fs := make([]fission.Function, len(t_functions.Items))
+	for _, t := range t_functions.Items {
+		fs = append(fs, *FunctionFromTPR(&t))
 	}
-	return &f_functions, nil
+	return fs
 }
 
-func EnvironmentFromTPR(t_environment *Environment) (*fission.Environment, error) {
-	metadata, err := MetadataFromTPR(&t_environment.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	f_environment := &fission.Environment{
-		Metadata: *metadata,
+func EnvironmentFromTPR(t_environment *Environment) *fission.Environment {
+	return &fission.Environment{
+		Metadata: *MetadataFromTPR(&t_environment.Metadata),
 		Spec:     t_environment.Spec,
 	}
-	return f_environment, nil
 }
 
-func EnvironmentToTPR(f_environment *fission.Environment, t_metadata *api.ObjectMeta) *Environment {
-	t_environment := &Environment{
-		Metadata: *MetadataToTPR(&f_environment.Metadata, t_metadata),
-		Spec:     f_environment.Spec,
-	}
-	return t_environment
+func EnvironmentToTPR(f_environment *fission.Environment) *Environment {
 }
 
-func EnvironmentListFromTPR(t_environments *EnvironmentList) (*[]fission.Environment, error) {
-	f_environments := make([]fission.Environment, len(t_environments.Items))
-	for _, t_e := range t_environments.Items {
-		f_e, err := EnvironmentFromTPR(&t_e)
-		if err != nil {
-			return nil, err
-		}
-		f_environments = append(f_environments, *f_e)
-	}
-	return &f_environments, nil
+func EnvironmentListFromTPR(t_environments *EnvironmentList) []fission.Environment {
 }
 
-func HttpTriggerFromTPR(t_httptrigger *Httptrigger) (*fission.HTTPTrigger, error) {
-	metadata, err := MetadataFromTPR(&t_httptrigger.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	f_httptrigger := &fission.HTTPTrigger{
-		Metadata: *metadata,
+func HttpTriggerFromTPR(t_httptrigger *Httptrigger) *fission.HTTPTrigger {
+	return &fission.HTTPTrigger{
+		Metadata: *MetadataFromTPR(&t_httptrigger.Metadata),
 		Spec:     t_httptrigger.Spec,
 	}
-	return f_httptrigger, nil
 }
 
-func HttpTriggerToTPR(f_httptrigger *fission.HTTPTrigger, t_metadata *api.ObjectMeta) *Httptrigger {
-	t_httptrigger := &Httptrigger{
-		Metadata: *MetadataToTPR(&f_httptrigger.Metadata, t_metadata),
-		Spec:     f_httptrigger.Spec,
-	}
-	return t_httptrigger
+func HttpTriggerToTPR(f_httptrigger *fission.HTTPTrigger) *Httptrigger {
 }
 
-func HttpTriggerListFromTPR(t_httpTriggers *HttptriggerList) (*[]fission.HTTPTrigger, error) {
-	f_httpTriggers := make([]fission.HTTPTrigger, len(t_httpTriggers.Items))
-	for _, t_ht := range t_httpTriggers.Items {
-		f_ht, err := HttpTriggerFromTPR(&t_ht)
-		if err != nil {
-			return nil, err
-		}
-		f_httpTriggers = append(f_httpTriggers, *f_ht)
-	}
-	return &f_httpTriggers, nil
+func HttpTriggerListFromTPR(t_httpTriggers *HttptriggerList) []fission.HTTPTrigger {
 }
 
-func KubernetesWatchTriggerFromTPR(t_kuberneteswatchtrigger *Kuberneteswatchtrigger) (*fission.KubernetesWatchTrigger, error) {
-	metadata, err := MetadataFromTPR(&t_kuberneteswatchtrigger.Metadata)
-	if err != nil {
-		return nil, err
+func KubernetesWatchTriggerFromTPR(t_kuberneteswatchtrigger *Kuberneteswatchtrigger) *fission.KubernetesWatchTrigger {
+	return &fission.Function{
+		Metadata: *MetadataFromTPR(&t_function.Metadata),
+		Spec:     t_function.Spec,
 	}
-	f_kuberneteswatchtrigger := &fission.KubernetesWatchTrigger{
-		Metadata: *metadata,
-		Spec:     t_kuberneteswatchtrigger.Spec,
-	}
-	return f_kuberneteswatchtrigger, nil
 }
 
-func KubernetesWatchTriggerToTPR(
-	f_kuberneteswatchtrigger *fission.KubernetesWatchTrigger,
-	t_metadata *api.ObjectMeta) *Kuberneteswatchtrigger {
-
-	t_kuberneteswatchtrigger := &Kuberneteswatchtrigger{
-		Metadata: *MetadataToTPR(&f_kuberneteswatchtrigger.Metadata, t_metadata),
-		Spec:     f_kuberneteswatchtrigger.Spec,
-	}
-	return t_kuberneteswatchtrigger
+func KubernetesWatchTriggerToTPR(f_kuberneteswatchtrigger *fission.KubernetesWatchTrigger) *Kuberneteswatchtrigger {
 }
 
-func KubernetesWatchTriggerListFromTPR(t_kubernetesWatchTriggers *KuberneteswatchtriggerList) (*[]fission.KubernetesWatchTrigger, error) {
-	f_kubernetesWatchTriggers := make([]fission.KubernetesWatchTrigger, len(t_kubernetesWatchTriggers.Items))
-	for _, t_wt := range t_kubernetesWatchTriggers.Items {
-		f_wt, err := KubernetesWatchTriggerFromTPR(&t_wt)
-		if err != nil {
-			return nil, err
-		}
-		f_kubernetesWatchTriggers = append(f_kubernetesWatchTriggers, *f_wt)
-	}
-	return &f_kubernetesWatchTriggers, nil
+func KubernetesWatchTriggerListFromTPR(t_kubernetesWatchTriggers *KuberneteswatchtriggerList) []fission.KubernetesWatchTrigger {
 }
