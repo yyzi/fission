@@ -263,6 +263,11 @@ const (
 	// FunctionReferenceFunctionName means that the function
 	// reference is simply by function name.
 	FunctionReferenceTypeFunctionName = "name"
+
+	// Other function reference types we'd like to support:
+	//   Versioned function, latest version
+	//   Versioned function. by semver "latest compatible"
+	//   Set of function references (recursively), by percentage of traffic
 )
 
 const (
