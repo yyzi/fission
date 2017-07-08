@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-func UrlForFunction(m *Metadata) string {
+func UrlForFunction(name string) string {
 	prefix := "/fission-function"
-	return fmt.Sprintf("%v/%v", prefix, m.Name)
+	return fmt.Sprintf("%v/%v", prefix, name)
 }
