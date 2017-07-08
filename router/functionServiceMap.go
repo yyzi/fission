@@ -21,7 +21,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/fission/fission"
+	"k8s.io/client-go/1.5/pkg/api"
+
 	"github.com/fission/fission/cache"
 )
 
@@ -35,7 +36,7 @@ func makeFunctionServiceMap(expiry time.Duration) *functionServiceMap {
 	}
 }
 
-func (fmap *functionServiceMap) lookup(f *fission.Metadata) (*url.URL, error) {
+func (fmap *functionServiceMap) lookup(f *api.ObjectMeta) (*url.URL, error) {
 	item, err := fmap.cache.Get(*f)
 	if err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ func (fmap *functionServiceMap) lookup(f *fission.Metadata) (*url.URL, error) {
 	return u, nil
 }
 
-func (fmap *functionServiceMap) assign(f *fission.Metadata, serviceUrl *url.URL) {
+func (fmap *functionServiceMap) assign(f *api.ObjectMeta, serviceUrl *url.URL) {
 	err, old := fmap.cache.Set(*f, serviceUrl)
 	if err != nil {
 		if *serviceUrl == *(old.(*url.URL)) {
