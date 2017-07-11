@@ -320,7 +320,16 @@ func (ws *watchSubscription) eventDispatchLoop() {
 			"X-Kubernetes-Event-Type":  string(ev.Type),
 			"X-Kubernetes-Object-Type": reflect.TypeOf(ev.Object).Elem().Name(),
 		}
-		ws.publisher.Publish(buf.String(), headers, ws.watch.Spec.FunctionReference.Name)
+
+		// TODO support other function ref types. Or perhaps delegate to router?
+		if ws.watch.Spec.FunctionReference.Type != fission.FunctionReferenceTypeFunctionName {
+			log.Printf("Error: unsupported function ref type: %v, can't publish event",
+				ws.watch.Spec.FunctionReference.Type)
+			continue
+		}
+
+		url := fission.UrlForFunction(ws.watch.Spec.FunctionReference.Name)
+		ws.publisher.Publish(buf.String(), headers, url)
 	}
 }
 
