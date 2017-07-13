@@ -17,39 +17,6 @@ limitations under the License.
 package fission
 
 type (
-	// Metadata for any resource. This is compatible with
-	// Kubernetes API's v1.ObjectMeta. Only a subset (XXX) of
-	// these fields are used in the Fission API; the rest are
-	// included for type compatibility.
-	//
-	// See Kubernetes API docs for documentation of these fields.
-	Metadata struct {
-		Name                       string            `json:"name,omitempty"`
-		GenerateName               string            `json:"generateName,omitempty"`
-		Namespace                  string            `json:"namespace,omitempty"`
-		SelfLink                   string            `json:"selfLink,omitempty"`
-		UID                        string            `json:"uid,omitempty"`
-		ResourceVersion            string            `json:"resourceVersion,omitempty"`
-		Generation                 int64             `json:"generation,omitempty"`
-		CreationTimestamp          Time              `json:"creationTimestamp,omitempty"`
-		DeletionTimestamp          *Time             `json:"deletionTimestamp,omitempty"`
-		DeletionGracePeriodSeconds *int64            `json:"deletionGracePeriodSeconds,omitempty"`
-		Labels                     map[string]string `json:"labels,omitempty"`
-		Annotations                map[string]string `json:"annotations,omitempty"`
-		OwnerReferences            []OwnerReference  `json:"ownerReferences,omitempty"`
-		Finalizers                 []string          `json:"finalizers,omitempty"`
-		ClusterName                string            `json:"clusterName,omitempty"`
-	}
-
-	// From K8s types, compatible with v1.OwnerReference
-	OwnerReference struct {
-		APIVersion string `json:"apiVersion" protobuf:"bytes,5,opt,name=apiVersion"`
-		Kind       string `json:"kind" protobuf:"bytes,1,opt,name=kind"`
-		Name       string `json:"name" protobuf:"bytes,3,opt,name=name"`
-		UID        string `json:"uid" protobuf:"bytes,4,opt,name=uid,casttype=k8s.io/kubernetes/pkg/types.UID"`
-		Controller *bool  `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
-	}
-
 	//
 	// Functions and packages
 	//
@@ -107,11 +74,6 @@ type (
 		Deployment Package `json:"deployment"`
 	}
 
-	Function struct {
-		Metadata
-		Spec FunctionSpec
-	}
-
 	FunctionReferenceType string
 
 	FunctionReference struct {
@@ -167,45 +129,32 @@ type (
 		// links from UI, CLI, etc.
 		DocumentationURL string `json:"documentationurl"`
 	}
-	Environment struct {
-		Metadata
-		Spec EnvironmentSpec
-	}
 
 	//
 	// Triggers
 	//
 
 	HTTPTriggerSpec struct {
-		Host              string `json:"host"`
-		RelativeURL       string `json:"relativeurl"`
-		Method            string `json:"method"`
-		FunctionReference `json:"functionref"`
-	}
-	HTTPTrigger struct {
-		Metadata
-		Spec HTTPTriggerSpec
+		Host              string            `json:"host"`
+		RelativeURL       string            `json:"relativeurl"`
+		Method            string            `json:"method"`
+		FunctionReference FunctionReference `json:"functionref"`
 	}
 
 	KubernetesWatchTriggerSpec struct {
 		Namespace         string            `json:"namespace"`
 		Type              string            `json:"type"`
 		LabelSelector     map[string]string `json:"labelselector"`
-		FunctionReference `json:"functionref"`
-	}
-	KubernetesWatchTrigger struct {
-		Metadata
-		Spec KubernetesWatchTriggerSpec
+		FunctionReference FunctionReference `json:"functionref"`
 	}
 
 	// MessageQueueTrigger invokes a function on events in a
 	// message queue.
-	MessageQueueTrigger struct {
-		Metadata         `json:"metadata"`
-		Function         Metadata `json:"function"`
-		MessageQueueType string   `json:"messageQueueType"`
-		Topic            string   `json:"topic"`
-		ResponseTopic    string   `json:"respTopic,omitempty"`
+	MessageQueueTriggerSpec struct {
+		FunctionReference FunctionReference `json:"functionref"`
+		MessageQueueType  string            `json:"messageQueueType"`
+		Topic             string            `json:"topic"`
+		ResponseTopic     string            `json:"respTopic,omitempty"`
 	}
 
 	// TimeTrigger invokes the specific function at a time or
@@ -213,10 +162,6 @@ type (
 	TimeTriggerSpec struct {
 		Cron              string `json:"cron"`
 		FunctionReference `json:"functionref"`
-	}
-	TimeTrigger struct {
-		Metadata
-		Spec TimeTriggerSpec
 	}
 
 	// Errors returned by the Fission API.
