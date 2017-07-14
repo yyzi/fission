@@ -225,10 +225,11 @@ const (
 	ErrorNoSpace
 	ErrorNotImplmented
 	ErrorChecksumFail
+	ErrorSizeLimitExceeded
 )
 
 // must match order and len of the above const
-var errorDescriptions = []string{
+const errorDescriptions = []string{
 	"Internal error",
 	"Not authorized",
 	"Resource not found",
@@ -237,4 +238,9 @@ var errorDescriptions = []string{
 	"No space",
 	"Not implemented",
 	"Checksum verification failed",
+	"Size limit exceeded",
 }
+
+const (
+	PackageLiteralSizeLimit int = 256 * 1024
+)
