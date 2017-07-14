@@ -79,6 +79,24 @@ func EnsureFissionTPRs(clientset *kubernetes.Clientset) error {
 			},
 			Description: "Kubernetes watch triggers for functions",
 		},
+		{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "timetrigger.fission.io",
+			},
+			Versions: []v1beta1.APIVersion{
+				{Name: "v1"},
+			},
+			Description: "Time-based triggers for functions",
+		},
+		{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "messagequeuetrigger.fission.io",
+			},
+			Versions: []v1beta1.APIVersion{
+				{Name: "v1"},
+			},
+			Description: "Messqge queue triggers for functions",
+		},
 	}
 	for _, tpr := range tprs {
 		err := ensureTPR(clientset, &tpr)

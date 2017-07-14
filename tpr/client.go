@@ -106,6 +106,20 @@ func configureClient(config *rest.Config) {
 				&api.ListOptions{},
 				&api.DeleteOptions{},
 			)
+			scheme.AddKnownTypes(
+				groupversion,
+				&Timetrigger{},
+				&TimetriggerList{},
+				&api.ListOptions{},
+				&api.DeleteOptions{},
+			)
+			scheme.AddKnownTypes(
+				groupversion,
+				&Messagequeuetrigger{},
+				&MessagequeuetriggerList{},
+				&api.ListOptions{},
+				&api.DeleteOptions{},
+			)
 			return nil
 		})
 	schemeBuilder.AddToScheme(api.Scheme)
@@ -137,4 +151,10 @@ func (fc *FissionClient) Httptriggers(ns string) HttptriggerInterface {
 }
 func (fc *FissionClient) Kuberneteswatchtriggers(ns string) KuberneteswatchtriggerInterface {
 	return MakeKuberneteswatchtriggerInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) Timetriggers(ns string) TimetriggerInterface {
+	return MakeTimetriggerInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) Messagequeuetriggers(ns string) MessagequeuetriggerInterface {
+	return MakeMessagequeuetriggerInterface(fc.tprClient, ns)
 }

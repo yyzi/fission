@@ -90,21 +90,30 @@ type (
 		Items []Kuberneteswatchtrigger `json:"items"`
 	}
 
-	// Versioning book-keeping.  These keep track of the default
-	// version of a versioned resource.  That allows the fission
-	// API to get a version of the resource when the version isn't
-	// specified.
-	Resourceversion struct {
+	// Time triggers
+	Timetrigger struct {
 		unversioned.TypeMeta `json:",inline"`
-		Metadata             api.ObjectMeta `json:"metadata"`
-		ResourceType         string
-		ResourceName         string
-		Version              string
+		Metadata             api.ObjectMeta          `json:"metadata"`
+		Spec                 fission.TimeTriggerSpec `json:"spec"`
 	}
-	ResourceversionList struct {
+	TimetriggerList struct {
 		unversioned.TypeMeta `json:",inline"`
 		Metadata             unversioned.ListMeta `json:"metadata"`
-		Items                []Resourceversion    `json:"items"`
+
+		Items []Timetrigger `json:"items"`
+	}
+
+	// Message Queue triggers
+	Messagequeuetrigger struct {
+		unversioned.TypeMeta `json:",inline"`
+		Metadata             api.ObjectMeta                  `json:"metadata"`
+		Spec                 fission.MessageQueueTriggerSpec `json:"spec"`
+	}
+	MessagequeuetriggerList struct {
+		unversioned.TypeMeta `json:",inline"`
+		Metadata             unversioned.ListMeta `json:"metadata"`
+
+		Items []Messagequeuetrigger `json:"items"`
 	}
 )
 
@@ -129,8 +138,11 @@ func (ht *Httptrigger) GetObjectKind() unversioned.ObjectKind {
 func (w *Kuberneteswatchtrigger) GetObjectKind() unversioned.ObjectKind {
 	return &w.TypeMeta
 }
-func (v *Resourceversion) GetObjectKind() unversioned.ObjectKind {
-	return &v.TypeMeta
+func (w *Timetrigger) GetObjectKind() unversioned.ObjectKind {
+	return &w.TypeMeta
+}
+func (w *Messagequeuetrigger) GetObjectKind() unversioned.ObjectKind {
+	return &w.TypeMeta
 }
 
 func (f *Function) GetObjectMeta() meta.Object {
@@ -145,8 +157,11 @@ func (ht *Httptrigger) GetObjectMeta() meta.Object {
 func (w *Kuberneteswatchtrigger) GetObjectMeta() meta.Object {
 	return &w.Metadata
 }
-func (v *Resourceversion) GetObjectMeta() meta.Object {
-	return &v.Metadata
+func (w *Timetrigger) GetObjectMeta() meta.Object {
+	return &w.Metadata
+}
+func (w *Messagequeuetrigger) GetObjectMeta() meta.Object {
+	return &w.Metadata
 }
 
 func (fl *FunctionList) GetObjectKind() unversioned.ObjectKind {
@@ -161,8 +176,11 @@ func (hl *HttptriggerList) GetObjectKind() unversioned.ObjectKind {
 func (wl *KuberneteswatchtriggerList) GetObjectKind() unversioned.ObjectKind {
 	return &wl.TypeMeta
 }
-func (vl *ResourceversionList) GetObjectKind() unversioned.ObjectKind {
-	return &vl.TypeMeta
+func (wl *TimetriggerList) GetObjectKind() unversioned.ObjectKind {
+	return &wl.TypeMeta
+}
+func (wl *MessagequeuetriggerList) GetObjectKind() unversioned.ObjectKind {
+	return &wl.TypeMeta
 }
 
 func (fl *FunctionList) GetListMeta() unversioned.List {
@@ -177,8 +195,11 @@ func (hl *HttptriggerList) GetListMeta() unversioned.List {
 func (wl *KuberneteswatchtriggerList) GetListMeta() unversioned.List {
 	return &wl.Metadata
 }
-func (vl *ResourceversionList) GetListMeta() unversioned.List {
-	return &vl.Metadata
+func (wl *TimetriggerList) GetListMeta() unversioned.List {
+	return &wl.Metadata
+}
+func (wl *MessagequeuetriggerList) GetListMeta() unversioned.List {
+	return &wl.Metadata
 }
 
 // In the client-go TPR example, UnmarshalJSON is defined here for the
