@@ -21,21 +21,9 @@ import (
 )
 
 func makeTPRBackedAPI() (*API, error) {
-	config, clientset, err := tpr.GetKubernetesClient()
+	fissionClient, _, err := tpr.MakeFissionClient()
 	if err != nil {
 		return nil, err
 	}
-
-	tprClient, err := tpr.GetTprClient(config)
-	if err != nil {
-		return nil, err
-	}
-
-	api := &API{
-		function:         tpr.MakeFunctionInterface(tprClient),
-		environment:      tpr.MakeEnvironmentInterface(tprClient),
-		httpTrigger:      tpr.MakeHttptriggerInterface(tprClient),
-		kubeWatchTrigger: tpr.MakeKuberneteswatchtriggerInterface(tprClient),
-	}
-	return api, nil
+	return &API{fissionClient: fissionClient}, nil
 }

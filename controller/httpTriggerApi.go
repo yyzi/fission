@@ -18,11 +18,11 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
@@ -30,7 +30,7 @@ import (
 )
 
 func (a *API) HTTPTriggerApiList(w http.ResponseWriter, r *http.Request) {
-	triggers, err := a.FissionClient.Httptriggers(api.NamespaceAll).List()
+	triggers, err := a.fissionClient.Httptriggers(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -46,7 +46,7 @@ func (a *API) HTTPTriggerApiList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) checkHttpTriggerDuplicates(t *tpr.Httptrigger) error {
-	triggers, err := a.FissionClient.Httptriggers(api.NamespaceAll).List(api.ListOptions{})
+	triggers, err := a.fissionClient.Httptriggers(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (a *API) HTTPTriggerApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var t tpr.HTTPTrigger
+	var t tpr.Httptrigger
 	err = json.Unmarshal(body, &t)
 	if err != nil {
 		a.respondWithError(w, err)
@@ -75,13 +75,13 @@ func (a *API) HTTPTriggerApiCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ensure we don't have a duplicate HTTP route defined (same URL and method)
-	err = checkHttpTriggerDuplicates(&t)
+	err = a.checkHttpTriggerDuplicates(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	tnew, err := a.FissionClient.Httptriggers(t.Metadata.Namespace).Create(&t)
+	tnew, err := a.fissionClient.Httptriggers(t.Metadata.Namespace).Create(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -102,10 +102,10 @@ func (a *API) HTTPTriggerApiGet(w http.ResponseWriter, r *http.Request) {
 	name := vars["httpTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	t, err := a.FissionClient.Httptriggers(ns).Get(name)
+	t, err := a.fissionClient.Httptriggers(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -143,13 +143,13 @@ func (a *API) HTTPTriggerApiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := checkHttpTriggerDuplicates(&t)
+	err = a.checkHttpTriggerDuplicates(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	tnew, err := a.FissionClient.Httptriggers(t.Metadata.Namespace).Update(&t)
+	tnew, err := a.fissionClient.Httptriggers(t.Metadata.Namespace).Update(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -165,19 +165,13 @@ func (a *API) HTTPTriggerApiUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) HTTPTriggerApiDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
 	name := vars["httpTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	m.Uid = r.FormValue("uid") // empty if uid is absent
-	if len(m.Uid) == 0 {
-		log.WithFields(log.Fields{"httpTrigger": m.Name}).Info("Deleting all versions")
-	}
-
-	err := a.FissionClient.Httptriggers(ns).Delete(name, api.DeleteOptions{})
+	err := a.fissionClient.Httptriggers(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return

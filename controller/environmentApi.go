@@ -30,7 +30,7 @@ import (
 )
 
 func (a *API) EnvironmentApiList(w http.ResponseWriter, r *http.Request) {
-	envs, err := a.FissionClient.Environments(api.NamespaceAll).List(api.ListOptions{})
+	envs, err := a.fissionClient.Environments(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -60,7 +60,7 @@ func (a *API) EnvironmentApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enew, err := a.FissionClient.Environments(env.Metadata.Namespace).Create(&env)
+	enew, err := a.fissionClient.Environments(env.Metadata.Namespace).Create(&env)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -81,10 +81,10 @@ func (a *API) EnvironmentApiGet(w http.ResponseWriter, r *http.Request) {
 	name := vars["environment"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	env, err := a.FissionClient.Environments(ns).Get(name)
+	env, err := a.fissionClient.Environments(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -122,7 +122,7 @@ func (a *API) EnvironmentApiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enew, err := a.FissionClient.Environments(env.Metadata.Namespace).Update(&env)
+	enew, err := a.fissionClient.Environments(env.Metadata.Namespace).Update(&env)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -141,10 +141,10 @@ func (a *API) EnvironmentApiDelete(w http.ResponseWriter, r *http.Request) {
 	name := vars["environment"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	err := a.FissionClient.Environments(ns).Delete(name, api.DeleteOptions{})
+	err := a.fissionClient.Environments(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return

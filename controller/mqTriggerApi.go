@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
@@ -30,8 +29,8 @@ import (
 )
 
 func (a *API) MessageQueueTriggerApiList(w http.ResponseWriter, r *http.Request) {
-	mqType := r.FormValue("mqtype")
-	triggers, err := a.FissionClient.Messagequeuetriggers(api.NamespaceAll).List(api.ListOptions{})
+	//mqType := r.FormValue("mqtype") // ignored for now
+	triggers, err := a.fissionClient.Messagequeuetriggers(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -51,14 +50,14 @@ func (a *API) MessageQueueTriggerApiCreate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var mqTrigger tpr.MessageQueueTrigger
+	var mqTrigger tpr.Messagequeuetrigger
 	err = json.Unmarshal(body, &mqTrigger)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	tnew, err := a.FissionClient.Messagequeuetriggers(mqTrigger.Metadata.Namespace).Create(&mqTrigger)
+	tnew, err := a.fissionClient.Messagequeuetriggers(mqTrigger.Metadata.Namespace).Create(&mqTrigger)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -78,10 +77,10 @@ func (a *API) MessageQueueTriggerApiGet(w http.ResponseWriter, r *http.Request) 
 	name := vars["mqTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	mqTrigger, err := a.FissionClient.Messagequeuetriggers(ns).Get(name)
+	mqTrigger, err := a.fissionClient.Messagequeuetriggers(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -104,20 +103,20 @@ func (a *API) MessageQueueTriggerApiUpdate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var mqTrigger tpr.MessageQueueTrigger
+	var mqTrigger tpr.Messagequeuetrigger
 	err = json.Unmarshal(body, &mqTrigger)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	if mqtName != mqTrigger.Metadata.Name {
+	if name != mqTrigger.Metadata.Name {
 		err = fission.MakeError(fission.ErrorInvalidArgument, "Message queue trigger name doesn't match URL")
 		a.respondWithError(w, err)
 		return
 	}
 
-	tnew, err := a.FissionClient.Messagequeuetriggers(mqTrigger.Metadata.Namespace).Update(&mqTrigger)
+	tnew, err := a.fissionClient.Messagequeuetriggers(mqTrigger.Metadata.Namespace).Update(&mqTrigger)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -136,10 +135,10 @@ func (a *API) MessageQueueTriggerApiDelete(w http.ResponseWriter, r *http.Reques
 	name := vars["mqTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	err := a.FissionClient.Messagequeuetriggers(ns).Delete(name)
+	err := a.fissionClient.Messagequeuetriggers(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return

@@ -23,7 +23,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
@@ -31,7 +30,7 @@ import (
 )
 
 func (a *API) TimeTriggerApiList(w http.ResponseWriter, r *http.Request) {
-	triggers, err := a.FissionClient.Timetriggers(api.NamespaceAll).List(api.ListOptions{})
+	triggers, err := a.fissionClient.Timetriggers(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -53,7 +52,7 @@ func (a *API) TimeTriggerApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var t tpr.TimeTrigger
+	var t tpr.Timetrigger
 	err = json.Unmarshal(body, &t)
 	if err != nil {
 		a.respondWithError(w, err)
@@ -68,7 +67,7 @@ func (a *API) TimeTriggerApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tnew, err := a.FissionClient.Timetriggers(t.Metadata.Namespace).Create(&t)
+	tnew, err := a.fissionClient.Timetriggers(t.Metadata.Namespace).Create(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -89,10 +88,10 @@ func (a *API) TimeTriggerApiGet(w http.ResponseWriter, r *http.Request) {
 	name := vars["timeTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	t, err := a.FissionClient.Timetriggers(ns).Get(name)
+	t, err := a.fissionClient.Timetriggers(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -117,7 +116,7 @@ func (a *API) TimeTriggerApiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var t fission.TimeTrigger
+	var t tpr.Timetrigger
 	err = json.Unmarshal(body, &t)
 	if err != nil {
 		a.respondWithError(w, err)
@@ -130,14 +129,14 @@ func (a *API) TimeTriggerApiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = cron.Parse(t.Cron)
+	_, err = cron.Parse(t.Spec.Cron)
 	if err != nil {
 		err = fission.MakeError(fission.ErrorInvalidArgument, "TimeTrigger cron spec is not valid")
 		a.respondWithError(w, err)
 		return
 	}
 
-	tnew, err := a.FissionClient.Timetriggers(t.Metadata.Namespace).Update(&t)
+	tnew, err := a.fissionClient.Timetriggers(t.Metadata.Namespace).Update(&t)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -156,10 +155,10 @@ func (a *API) TimeTriggerApiDelete(w http.ResponseWriter, r *http.Request) {
 	name := vars["timeTrigger"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	err := a.FissionClient.Timetriggers(ns).Delete(name)
+	err := a.fissionClient.Timetriggers(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return

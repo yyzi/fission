@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
@@ -30,7 +29,7 @@ import (
 )
 
 func (a *API) WatchApiList(w http.ResponseWriter, r *http.Request) {
-	watches, err := a.FissionClient.Kuberneteswatchtriggers(api.NamespaceAll).List(api.ListOptions{})
+	watches, err := a.fissionClient.Kuberneteswatchtriggers(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -52,7 +51,7 @@ func (a *API) WatchApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var watch tpr.Watch
+	var watch tpr.Kuberneteswatchtrigger
 	err = json.Unmarshal(body, &watch)
 	if err != nil {
 		a.respondWithError(w, err)
@@ -61,7 +60,7 @@ func (a *API) WatchApiCreate(w http.ResponseWriter, r *http.Request) {
 
 	// TODO check for duplicate watches
 
-	wnew, err := a.FissionClient.Kuberneteswatchtriggers(watch.Metadata.Namespace).Create(&watch)
+	wnew, err := a.fissionClient.Kuberneteswatchtriggers(watch.Metadata.Namespace).Create(&watch)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -82,10 +81,10 @@ func (a *API) WatchApiGet(w http.ResponseWriter, r *http.Request) {
 	name := vars["watch"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	watch, err := a.FissionClient.Kuberneteswatchtriggers(ns).Get(name)
+	watch, err := a.fissionClient.Kuberneteswatchtriggers(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -110,10 +109,10 @@ func (a *API) WatchApiDelete(w http.ResponseWriter, r *http.Request) {
 	name := vars["watch"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	err := a.FissionClient.Kuberneteswatchtriggers(ns).Delete(name, api.DeleteOptions{})
+	err := a.fissionClient.Kuberneteswatchtriggers(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return

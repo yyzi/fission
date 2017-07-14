@@ -34,12 +34,7 @@ import (
 
 type (
 	API struct {
-		FunctionStore
-		HTTPTriggerStore
-		TimeTriggerStore
-		MessageQueueTriggerStore
-		EnvironmentStore
-		WatchStore
+		fissionClient *tpr.FissionClient
 	}
 
 	logDBConfig struct {
@@ -49,16 +44,8 @@ type (
 	}
 )
 
-func MakeAPI(rs *ResourceStore) *API {
-	api := &API{
-		FunctionStore:            FunctionStore{ResourceStore: *rs},
-		HTTPTriggerStore:         HTTPTriggerStore{ResourceStore: *rs},
-		TimeTriggerStore:         TimeTriggerStore{ResourceStore: *rs},
-		MessageQueueTriggerStore: MessageQueueTriggerStore{ResourceStore: *rs},
-		EnvironmentStore:         EnvironmentStore{ResourceStore: *rs},
-		WatchStore:               WatchStore{ResourceStore: *rs},
-	}
-	return api
+func MakeAPI() (*API, error) {
+	return makeTPRBackedAPI()
 }
 
 func (api *API) respondWithSuccess(w http.ResponseWriter, resp []byte) {

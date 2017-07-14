@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -33,13 +32,13 @@ import (
 )
 
 func (a *API) FunctionApiList(w http.ResponseWriter, r *http.Request) {
-	funcs, err := a.FissionClient.Functions(api.NamespaceAll).List(api.ListOptions{})
+	funcs, err := a.fissionClient.Functions(api.NamespaceAll).List(api.ListOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	resp, err := json.Marshal(funcs)
+	resp, err := json.Marshal(funcs.Items)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -74,13 +73,13 @@ func (a *API) FunctionApiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := a.FissionClient.Functions(f.Metadata.Namespace).Create(&f)
+	fnew, err := a.fissionClient.Functions(f.Metadata.Namespace).Create(&f)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	resp, err := json.Marshal(f.Metadata)
+	resp, err := json.Marshal(fnew.Metadata)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -95,11 +94,11 @@ func (a *API) FunctionApiGet(w http.ResponseWriter, r *http.Request) {
 	name := vars["function"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 	raw := r.FormValue("deploymentraw") // just the deployment pkg
 
-	f, err := a.FissionClient.Functions(ns).Get(name)
+	f, err := a.fissionClient.Functions(ns).Get(name)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -128,20 +127,20 @@ func (a *API) FunctionApiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var f fission.Function
+	var f tpr.Function
 	err = json.Unmarshal(body, &f)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
 	}
 
-	if funcName != f.Metadata.Name {
+	if name != f.Metadata.Name {
 		err = fission.MakeError(fission.ErrorInvalidArgument, "Function name doesn't match URL")
 		a.respondWithError(w, err)
 		return
 	}
 
-	fnew, err := a.FissionClient.Functions(f.Metadata.Namespace).Update(&f)
+	fnew, err := a.fissionClient.Functions(f.Metadata.Namespace).Update(&f)
 	if err != nil {
 		a.respondWithError(w, err)
 		return
@@ -157,13 +156,13 @@ func (a *API) FunctionApiUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) FunctionApiDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name = vars["function"]
+	name := vars["function"]
 	ns := vars["namespace"]
 	if len(ns) == 0 {
-		ns = "default"
+		ns = api.NamespaceDefault
 	}
 
-	err := a.FissionClient.Functions(ns).Delete(name, api.DeleteOptions{})
+	err := a.fissionClient.Functions(ns).Delete(name, &api.DeleteOptions{})
 	if err != nil {
 		a.respondWithError(w, err)
 		return
