@@ -22,8 +22,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/urfave/cli"
+	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
+	"github.com/fission/fission/tpr"
 )
 
 func envCreate(c *cli.Context) error {
@@ -39,11 +41,16 @@ func envCreate(c *cli.Context) error {
 		fatal("Need an image, use --image.")
 	}
 
-	env := &fission.Environment{
+	env := &tpr.Environment{
 		Metadata: fission.Metadata{
 			Name: envName,
 		},
-		RunContainerImageUrl: envImg,
+		Spec: fission.EnvironmentSpec{
+			Version: 1,
+			Runtime: fission.Package{
+				Image: envImg,
+			},
+		},
 	}
 
 	_, err := client.EnvironmentCreate(env)
@@ -61,14 +68,17 @@ func envGet(c *cli.Context) error {
 		fatal("Need a name, use --name.")
 	}
 
-	m := &fission.Metadata{Name: envName}
+	m := &api.ObjectMeta{
+		Name:      envName,
+		Namespace: api.NamespaceDefault,
+	}
 	env, err := client.EnvironmentGet(m)
 	checkErr(err, "get environment")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 	fmt.Fprintf(w, "%v\t%v\t%v\n", "NAME", "UID", "IMAGE")
 	fmt.Fprintf(w, "%v\t%v\t%v\n",
-		env.Metadata.Name, env.Metadata.Uid, env.RunContainerImageUrl)
+		env.Metadata.Name, env.Metadata.UID, env.Spec.Runtime.Image)
 	w.Flush()
 	return nil
 }
@@ -86,11 +96,15 @@ func envUpdate(c *cli.Context) error {
 		fatal("Need an image, use --image.")
 	}
 
-	env := &fission.Environment{
+	env := &tpr.Environment{
 		Metadata: fission.Metadata{
 			Name: envName,
 		},
-		RunContainerImageUrl: envImg,
+		Spec: fission.EnvironmentSpec{
+			Runtime: fission.Package{
+				Image: envImg,
+			},
+		},
 	}
 
 	_, err := client.EnvironmentUpdate(env)
@@ -108,7 +122,10 @@ func envDelete(c *cli.Context) error {
 		fatal("Need a name , use --name.")
 	}
 
-	m := &fission.Metadata{Name: envName}
+	m := &api.ObjectMeta{
+		Name:      envName,
+		Namespace: api.NamespaceDefault,
+	}
 	err := client.EnvironmentDelete(m)
 	checkErr(err, "delete environment")
 
@@ -126,7 +143,7 @@ func envList(c *cli.Context) error {
 	fmt.Fprintf(w, "%v\t%v\t%v\n", "NAME", "UID", "IMAGE")
 	for _, env := range envs {
 		fmt.Fprintf(w, "%v\t%v\t%v\n",
-			env.Metadata.Name, env.Metadata.Uid, env.RunContainerImageUrl)
+			env.Metadata.Name, env.Metadata.UID, env.Spec.Runtime.Image)
 	}
 	w.Flush()
 

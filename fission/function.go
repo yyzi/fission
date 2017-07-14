@@ -29,36 +29,49 @@ import (
 
 	"github.com/satori/go.uuid"
 	"github.com/urfave/cli"
+	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/fission/logdb"
+	"github.com/fission/fission/tpr"
 )
 
-func fnFetchCode(filePath string) []byte {
+func downloadUrl(url string) {
+	var resp *http.Response
+	resp, err = http.Get(url)
+	if err != nil {
+		checkErr(err, fmt.Sprintf("download function"))
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("%v - HTTP response returned non 200 status", resp.StatusCode)
+		checkErr(err, fmt.Sprintf("download function"))
+	}
+
+	code, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		checkErr(err, fmt.Sprintf("download function body %v", url))
+	}
+
+}
+
+func fileSize(filePath string) int64 {
+	file, err := os.Open(filePath)
+	checkErr(err, fmt.Sprintf("open %v", filePath))
+
+	info, err := os.Stat(file)
+	checkErr(err, fmt.Sprintf("stat %v", filePath))
+
+	return info.Size()
+}
+
+func getPackageContents(filePath string) []byte {
 	var code []byte
 	var err error
 
-	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
-		var resp *http.Response
-		resp, err = http.Get(filePath)
-		if err != nil {
-			checkErr(err, fmt.Sprintf("download function"))
-		}
-
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("%v - HTTP response returned non 200 status", resp.StatusCode)
-			checkErr(err, fmt.Sprintf("download function"))
-		}
-
-		code, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			checkErr(err, fmt.Sprintf("download function body %v", filePath))
-		}
-	} else {
-		code, err = ioutil.ReadFile(filePath)
-		checkErr(err, fmt.Sprintf("read %v", filePath))
-	}
+	code, err = ioutil.ReadFile(filePath)
+	checkErr(err, fmt.Sprintf("read %v", filePath))
 	return code
 }
 
@@ -83,12 +96,25 @@ func fnCreate(c *cli.Context) error {
 		}
 	}
 
-	code := fnFetchCode(fileName)
+	if fileSize(fileName) > fission.PackageLiteralSizeLimit {
+		// TODO fallback to uploading + setting a Package URL
+		fmt.Printf("File size not supported yet")
+		os.Exit(1)
+	}
 
-	function := &fission.Function{
-		Metadata:    fission.Metadata{Name: fnName},
-		Environment: fission.Metadata{Name: envName},
-		Code:        string(code),
+	pkgContents := getPackageContents(fileName)
+
+	function := &tpr.Function{
+		Metadata: api.ObjectMeta{
+			Name:      fnName,
+			Namespace: api.NamespaceDefault,
+		},
+		Spec: fission.FunctionSpec{
+			Environment: envName,
+			Deployment: fission.Package{
+				Literal: pkgContents,
+			},
+		},
 	}
 
 	_, err := client.FunctionCreate(function)
@@ -106,14 +132,17 @@ func fnCreate(c *cli.Context) error {
 		method = "GET"
 	}
 	triggerName := uuid.NewV4().String()
-	ht := &fission.HTTPTrigger{
+	ht := &tpr.Httptrigger{
 		Metadata: fission.Metadata{
 			Name: triggerName,
 		},
-		UrlPattern: triggerUrl,
-		Method:     getMethod(method),
-		Function: fission.Metadata{
-			Name: fnName,
+		Spec: fission.HTTPTriggerSpec{
+			RelativeURL: triggerUrl,
+			Method:      getMethod(method),
+			FunctionReference: fission.FunctionReference{
+				Type: fission.FunctionReferenceTypeFunctionName,
+				Name: fnName,
+			},
 		},
 	}
 	_, err = client.HTTPTriggerCreate(ht)
@@ -130,13 +159,15 @@ func fnGet(c *cli.Context) error {
 	if len(fnName) == 0 {
 		fatal("Need name of function, use --name")
 	}
-	fnUid := c.String("uid")
-	m := &fission.Metadata{Name: fnName, Uid: fnUid}
+	m := &api.ObjectMeta{
+		Name:      fnName,
+		Namespace: api.NamespaceDefault,
+	}
 
-	code, err := client.FunctionGetRaw(m)
+	code, err := client.FunctionGetRawDeployment(m)
 	checkErr(err, "get function")
 
-	fmt.Println(string(code))
+	os.Stdout.Write(code)
 	return err
 }
 

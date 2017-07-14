@@ -130,16 +130,6 @@ func main() {
 		{Name: "mqtrigger", Aliases: []string{"mqt", "messagequeue"}, Usage: "Manage message queue triggers for functions", Subcommands: mqtSubcommands},
 		{Name: "environment", Aliases: []string{"env"}, Usage: "Manage environments", Subcommands: envSubcommands},
 		{Name: "watch", Aliases: []string{"w"}, Usage: "Manage watches", Subcommands: wSubCommands},
-
-		// Misc commands
-		{
-			Name:  "get-deployment-yaml",
-			Usage: "Get deployment yaml.  Use it as 'fission get-deployment-yaml | kubectl create -f -'",
-			Action: func(c *cli.Context) error {
-				getDeploymentYaml()
-				return nil
-			},
-		},
 	}
 
 	app.Run(os.Args)
