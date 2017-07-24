@@ -42,12 +42,13 @@ func envCreate(c *cli.Context) error {
 	}
 
 	env := &tpr.Environment{
-		Metadata: fission.Metadata{
-			Name: envName,
+		Metadata: api.ObjectMeta{
+			Name:      envName,
+			Namespace: api.NamespaceDefault,
 		},
 		Spec: fission.EnvironmentSpec{
 			Version: 1,
-			Runtime: fission.Package{
+			Runtime: fission.Runtime{
 				Image: envImg,
 			},
 		},
@@ -96,18 +97,15 @@ func envUpdate(c *cli.Context) error {
 		fatal("Need an image, use --image.")
 	}
 
-	env := &tpr.Environment{
-		Metadata: fission.Metadata{
-			Name: envName,
-		},
-		Spec: fission.EnvironmentSpec{
-			Runtime: fission.Package{
-				Image: envImg,
-			},
-		},
-	}
+	env, err := client.EnvironmentGet(&api.ObjectMeta{
+		Name:      envName,
+		Namespace: api.NamespaceDefault,
+	})
+	checkErr(err, "find environment")
 
-	_, err := client.EnvironmentUpdate(env)
+	env.Spec.Runtime.Image = envImg
+
+	_, err = client.EnvironmentUpdate(env)
 	checkErr(err, "update environment")
 
 	fmt.Printf("environment '%v' updated\n", envName)
