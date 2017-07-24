@@ -148,8 +148,8 @@ type (
 		FunctionReference FunctionReference `json:"functionref"`
 	}
 
-	// MessageQueueTrigger invokes a function on events in a
-	// message queue.
+	// MessageQueueTriggerSpec defines a binding from a topic in a
+	// message queue to a function.
 	MessageQueueTriggerSpec struct {
 		FunctionReference FunctionReference `json:"functionref"`
 		MessageQueueType  string            `json:"messageQueueType"`
@@ -229,7 +229,7 @@ const (
 )
 
 // must match order and len of the above const
-const errorDescriptions = []string{
+var errorDescriptions = []string{
 	"Internal error",
 	"Not authorized",
 	"Resource not found",
@@ -242,5 +242,5 @@ const errorDescriptions = []string{
 }
 
 const (
-	PackageLiteralSizeLimit int = 256 * 1024
+	PackageLiteralSizeLimit int64 = 256 * 1024
 )
