@@ -17,20 +17,15 @@ limitations under the License.
 package poolmgr
 
 import (
-	"fmt"
 	"log"
-	"strings"
 
 	"github.com/dchest/uniuri"
-	"k8s.io/client-go/1.5/pkg/api"
 
 	"github.com/fission/fission/tpr"
 )
 
 // Start the poolmgr service.
-func StartPoolmgr(controllerUrl string, fissionNamespace string, functionNamespace string, port int) error {
-	controllerUrl = strings.TrimSuffix(controllerUrl, "/")
-
+func StartPoolmgr(fissionNamespace string, functionNamespace string, port int) error {
 	fissionClient, kubernetesClient, err := tpr.MakeFissionClient()
 	if err != nil {
 		log.Printf("Failed to get kubernetes client: %v", err)
@@ -42,7 +37,7 @@ func StartPoolmgr(controllerUrl string, fissionNamespace string, functionNamespa
 
 	fsCache := MakeFunctionServiceCache()
 	gpm := MakeGenericPoolManager(
-		controllerUrl, fissionClient, kubernetesClient, fissionNamespace,
+		fissionClient, kubernetesClient, fissionNamespace,
 		functionNamespace, fsCache, instanceId)
 
 	api := MakePoolmgr(gpm, fissionClient, fissionNamespace, fsCache)

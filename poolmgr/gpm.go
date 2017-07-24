@@ -39,7 +39,6 @@ type (
 		kubernetesClient *kubernetes.Clientset
 		namespace        string
 		fissionNs        string
-		controllerUrl    string
 		fissionClient    *tpr.FissionClient
 		fsCache          *functionServiceCache
 		instanceId       string
@@ -58,7 +57,6 @@ type (
 )
 
 func MakeGenericPoolManager(
-	controllerUrl string,
 	fissionClient *tpr.FissionClient,
 	kubernetesClient *kubernetes.Clientset,
 	fissionNamespace string,
@@ -71,7 +69,6 @@ func MakeGenericPoolManager(
 		kubernetesClient: kubernetesClient,
 		namespace:        functionNamespace,
 		fissionNs:        fissionNamespace,
-		controllerUrl:    controllerUrl,
 		fissionClient:    fissionClient,
 		fsCache:          fsCache,
 		instanceId:       instanceId,
@@ -92,7 +89,7 @@ func (gpm *GenericPoolManager) service() {
 			pool, ok := gpm.pools[tpr.CacheKey(&req.env.Metadata)]
 			if !ok {
 				pool, err = MakeGenericPool(
-					gpm.controllerUrl, gpm.kubernetesClient, req.env,
+					gpm.kubernetesClient, req.env,
 					3, // TODO configurable/autoscalable
 					gpm.namespace, gpm.fsCache, gpm.instanceId)
 				if err != nil {

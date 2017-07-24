@@ -51,11 +51,10 @@ const POD_PHASE_RUNNING string = "Running"
 type (
 	GenericPool struct {
 		env              *tpr.Environment
-		replicas         int32               // num idle pods
-		deployment       *v1beta1.Deployment // kubernetes deployment
-		namespace        string              // namespace to keep our resources
-		podReadyTimeout  time.Duration       // timeout for generic pods to become ready
-		controllerUrl    string
+		replicas         int32                 // num idle pods
+		deployment       *v1beta1.Deployment   // kubernetes deployment
+		namespace        string                // namespace to keep our resources
+		podReadyTimeout  time.Duration         // timeout for generic pods to become ready
 		idlePodReapTime  time.Duration         // pods unused for idlePodReapTime are deleted
 		fsCache          *functionServiceCache // cache funcSvc's by function, address and podname
 		useSvc           bool                  // create k8s service for specialized pods
@@ -79,7 +78,6 @@ type (
 )
 
 func MakeGenericPool(
-	controllerUrl string,
 	kubernetesClient *kubernetes.Clientset,
 	env *tpr.Environment,
 	initialReplicas int32,
@@ -103,7 +101,6 @@ func MakeGenericPool(
 		kubernetesClient: kubernetesClient,
 		namespace:        namespace,
 		podReadyTimeout:  5 * time.Minute, // TODO make this an env param?
-		controllerUrl:    controllerUrl,
 		idlePodReapTime:  3 * time.Minute, // TODO make this configurable
 		fsCache:          fsCache,
 		poolInstanceId:   uniuri.NewLen(8),
