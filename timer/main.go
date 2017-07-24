@@ -21,7 +21,7 @@ import (
 	"github.com/fission/fission/tpr"
 )
 
-func Start(controllerUrl string, routerUrl string) error {
+func Start(routerUrl string) error {
 	fissionClient, _, err := tpr.MakeFissionClient()
 	if err != nil {
 		return err
