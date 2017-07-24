@@ -27,16 +27,6 @@ import (
 	"github.com/fission/fission/tpr"
 )
 
-// Given metadata, create a key that uniquely identifies the contents
-// of the object. Since resourceVersion changes on every update and
-// names are unique, name+resourceVersion identifies the
-// content. (ResourceVersion may also update on status updates, so
-// this will result in some unnecessary cache misses. That should be
-// ok.)
-func cacheKey(metadata *api.ObjectMeta) string {
-	return fmt.Sprintf("%v_%v", metadata.UID, metadata.ResourceVersion)
-}
-
 // Start the poolmgr service.
 func StartPoolmgr(controllerUrl string, fissionNamespace string, functionNamespace string, port int) error {
 	controllerUrl = strings.TrimSuffix(controllerUrl, "/")

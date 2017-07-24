@@ -85,13 +85,13 @@ func (poolMgr *Poolmgr) serveCreateFuncServices() {
 		m := req.funcMeta
 
 		// Cache miss -- is this first one to request the func?
-		wg, found := poolMgr.fsCreateChannels[cacheKey(m)]
+		wg, found := poolMgr.fsCreateChannels[tpr.CacheKey(m)]
 		if !found {
 			// create a waitgroup for other requests for
 			// the same function to wait on
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
-			poolMgr.fsCreateChannels[cacheKey(m)] = wg
+			poolMgr.fsCreateChannels[tpr.CacheKey(m)] = wg
 
 			// launch a goroutine for each request, to parallelize
 			// the specialization of different functions
@@ -101,7 +101,7 @@ func (poolMgr *Poolmgr) serveCreateFuncServices() {
 					address: address,
 					err:     err,
 				}
-				delete(poolMgr.fsCreateChannels, cacheKey(m))
+				delete(poolMgr.fsCreateChannels, tpr.CacheKey(m))
 				wg.Done()
 			}()
 		} else {
@@ -154,7 +154,7 @@ func (poolMgr *Poolmgr) getFunctionEnv(m *api.ObjectMeta) (*tpr.Environment, err
 	var env *tpr.Environment
 
 	// Cached ?
-	result, err := poolMgr.functionEnv.Get(cacheKey(m))
+	result, err := poolMgr.functionEnv.Get(tpr.CacheKey(m))
 	if err == nil {
 		env = result.(*tpr.Environment)
 		return env, nil
@@ -174,7 +174,7 @@ func (poolMgr *Poolmgr) getFunctionEnv(m *api.ObjectMeta) (*tpr.Environment, err
 	}
 
 	// cache for future lookups
-	poolMgr.functionEnv.Set(cacheKey(m), env)
+	poolMgr.functionEnv.Set(tpr.CacheKey(m), env)
 
 	return env, nil
 }

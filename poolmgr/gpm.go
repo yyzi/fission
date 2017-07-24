@@ -89,7 +89,7 @@ func (gpm *GenericPoolManager) service() {
 		switch req.requestType {
 		case GET_POOL:
 			var err error
-			pool, ok := gpm.pools[cacheKey(&req.env.Metadata)]
+			pool, ok := gpm.pools[tpr.CacheKey(&req.env.Metadata)]
 			if !ok {
 				pool, err = MakeGenericPool(
 					gpm.controllerUrl, gpm.kubernetesClient, req.env,
@@ -99,13 +99,13 @@ func (gpm *GenericPoolManager) service() {
 					req.responseChannel <- &response{error: err}
 					continue
 				}
-				gpm.pools[cacheKey(&req.env.Metadata)] = pool
+				gpm.pools[tpr.CacheKey(&req.env.Metadata)] = pool
 			}
 			req.responseChannel <- &response{pool: pool}
 		case CLEANUP_POOLS:
 			latestEnvSet := make(map[string]bool)
 			for _, env := range req.envList {
-				latestEnvSet[cacheKey(&env.Metadata)] = true
+				latestEnvSet[tpr.CacheKey(&env.Metadata)] = true
 			}
 			for key, pool := range gpm.pools {
 				_, ok := latestEnvSet[key]

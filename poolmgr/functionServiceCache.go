@@ -92,7 +92,7 @@ func (fsc *functionServiceCache) service() {
 			pods := make([]string, 0)
 			for podNameI, mI := range byPodCopy {
 				m := mI.(api.ObjectMeta)
-				fsvcI, err := fsc.byFunction.Get(cacheKey(&m))
+				fsvcI, err := fsc.byFunction.Get(tpr.CacheKey(&m))
 				if err != nil {
 					resp.error = err
 				} else {
@@ -119,7 +119,7 @@ func (fsc *functionServiceCache) service() {
 }
 
 func (fsc *functionServiceCache) GetByFunction(m *api.ObjectMeta) (*funcSvc, error) {
-	key := cacheKey(m)
+	key := tpr.CacheKey(m)
 
 	fsvcI, err := fsc.byFunction.Get(key)
 	if err != nil {
@@ -135,7 +135,7 @@ func (fsc *functionServiceCache) GetByFunction(m *api.ObjectMeta) (*funcSvc, err
 }
 
 func (fsc *functionServiceCache) Add(fsvc funcSvc) (error, *funcSvc) {
-	err, existing := fsc.byFunction.Set(cacheKey(fsvc.function), &fsvc)
+	err, existing := fsc.byFunction.Set(tpr.CacheKey(fsvc.function), &fsvc)
 	if err != nil {
 		if existing != nil {
 			f := existing.(*funcSvc)
@@ -182,7 +182,7 @@ func (fsc *functionServiceCache) _touchByAddress(address string) error {
 		return err
 	}
 	m := mI.(api.ObjectMeta)
-	fsvcI, err := fsc.byFunction.Get(cacheKey(&m))
+	fsvcI, err := fsc.byFunction.Get(tpr.CacheKey(&m))
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (fsc *functionServiceCache) _deleteByPod(podName string, minAge time.Durati
 		return false, err
 	}
 	m := mI.(api.ObjectMeta)
-	fsvcI, err := fsc.byFunction.Get(cacheKey(&m))
+	fsvcI, err := fsc.byFunction.Get(tpr.CacheKey(&m))
 	if err != nil {
 		return false, err
 	}
@@ -221,7 +221,7 @@ func (fsc *functionServiceCache) _deleteByPod(podName string, minAge time.Durati
 		return false, nil
 	}
 
-	fsc.byFunction.Delete(cacheKey(&m))
+	fsc.byFunction.Delete(tpr.CacheKey(&m))
 	fsc.byAddress.Delete(fsvc.address)
 	fsc.byPod.Delete(podName)
 	return true, nil
