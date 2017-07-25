@@ -17,7 +17,9 @@ limitations under the License.
 package tpr
 
 import (
+	"errors"
 	"os"
+	"time"
 
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
@@ -141,6 +143,23 @@ func configureClient(config *rest.Config) {
 	schemeBuilder.AddToScheme(api.Scheme)
 }
 
+func waitForTPRs(tprClient *rest.RESTClient) error {
+	start := time.Now()
+	for {
+		fi := MakeFunctionInterface(tprClient, api.NamespaceDefault)
+		_, err := fi.List(api.ListOptions{})
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			return nil
+		}
+
+		if time.Now().Sub(start) > 30*time.Second {
+			return errors.New("timeout waiting for TPRs")
+		}
+	}
+}
+
 func MakeFissionClient() (*FissionClient, *kubernetes.Clientset, error) {
 	config, kubeClient, err := GetKubernetesClient()
 	if err != nil {
@@ -173,4 +192,7 @@ func (fc *FissionClient) Timetriggers(ns string) TimetriggerInterface {
 }
 func (fc *FissionClient) Messagequeuetriggers(ns string) MessagequeuetriggerInterface {
 	return MakeMessagequeuetriggerInterface(fc.tprClient, ns)
+}
+func (fc *FissionClient) WaitForTPRs() {
+	waitForTPRs(fc.tprClient)
 }

@@ -49,7 +49,7 @@ func functionTests(tprClient *rest.RESTClient) {
 			Deployment: fission.Package{
 				Literal: []byte("hi"),
 			},
-			EnvironmentUid: "xxx",
+			EnvironmentName: "xxx",
 		},
 	}
 
@@ -76,7 +76,7 @@ func functionTests(tprClient *rest.RESTClient) {
 	log.Printf("f.Metadata = %#v", f.Metadata)
 
 	// update
-	function.Spec.EnvironmentUid = "yyy"
+	function.Spec.EnvironmentName = "yyy"
 	f, err = fi.Update(function)
 	panicIf(err)
 
@@ -88,7 +88,7 @@ func functionTests(tprClient *rest.RESTClient) {
 	if len(fl.Items) != 1 {
 		log.Panicf("wrong count from list: %v", fl)
 	}
-	if fl.Items[0].Spec.EnvironmentUid != function.Spec.EnvironmentUid {
+	if fl.Items[0].Spec.EnvironmentName != function.Spec.EnvironmentName {
 		log.Panicf("bad object from list: %v", fl.Items[0])
 	}
 
@@ -117,7 +117,7 @@ func functionTests(tprClient *rest.RESTClient) {
 		if !ok {
 			log.Panicf("Can't cast to Function")
 		}
-		if wf.Spec.EnvironmentUid != function.Spec.EnvironmentUid {
+		if wf.Spec.EnvironmentName != function.Spec.EnvironmentName {
 			log.Panicf("Bad object from watch: %#v", wf)
 		}
 		log.Printf("watch event took %v", time.Now().Sub(start))
@@ -144,7 +144,6 @@ func environmentTests(tprClient *rest.RESTClient) {
 				Image:   "yyy",
 				Command: "zzz",
 			},
-			FilenameExtensions: []string{"js"},
 		},
 	}
 
@@ -231,10 +230,8 @@ func httpTriggerTests(tprClient *rest.RESTClient) {
 			RelativeURL: "/hi",
 			Method:      "GET",
 			FunctionReference: fission.FunctionReference{
-				Selector: map[string]string{
-					"name": "hello",
-					"uid":  "42",
-				},
+				Type: fission.FunctionReferenceTypeFunctionName,
+				Name: "hello",
 			},
 		},
 	}
@@ -325,9 +322,8 @@ func kubernetesWatchTriggerTests(tprClient *rest.RESTClient) {
 				"x": "y",
 			},
 			FunctionReference: fission.FunctionReference{
-				Selector: map[string]string{
-					"name": "foo",
-				},
+				Type: fission.FunctionReferenceTypeFunctionName,
+				Name: "foo",
 			},
 		},
 	}
@@ -414,12 +410,11 @@ func TestTpr(t *testing.T) {
 	err = EnsureFissionTPRs(clientset)
 	panicIf(err)
 
-	// The "right" way is to poll for the tpr api endpoint to stop
-	// 404'ing, or something like that.
-	time.Sleep(10 * time.Second)
-
 	// rest client with knowledge about our tpr types
 	tprClient, err := GetTprClient(config)
+	panicIf(err)
+
+	err = waitForTPRs(tprClient)
 	panicIf(err)
 
 	functionTests(tprClient)

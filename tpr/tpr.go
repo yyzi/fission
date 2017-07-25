@@ -17,8 +17,6 @@ limitations under the License.
 package tpr
 
 import (
-	"time"
-
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api/errors"
 	"k8s.io/client-go/1.5/pkg/api/v1"
@@ -105,10 +103,4 @@ func EnsureFissionTPRs(clientset *kubernetes.Clientset) error {
 		}
 	}
 	return nil
-}
-
-func WaitForTPRs(kubeClient *kubernetes.Clientset) {
-	// The "right" way is to poll for the tpr api endpoint to stop
-	// 404'ing, or something like that.
-	time.Sleep(10 * time.Second)
 }
