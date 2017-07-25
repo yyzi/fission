@@ -26,6 +26,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	kerrors "k8s.io/client-go/1.5/pkg/api/errors"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/fission/logdb"
@@ -59,6 +60,14 @@ func (api *API) respondWithSuccess(w http.ResponseWriter, resp []byte) {
 
 func (api *API) respondWithError(w http.ResponseWriter, err error) {
 	debug.PrintStack()
+
+	// this error type comes with an HTTP code, so just use that
+	se, ok := err.(*kerrors.StatusError)
+	if ok {
+		http.Error(w, string(se.ErrStatus.Reason), int(se.ErrStatus.Code))
+		return
+	}
+
 	code, msg := fission.GetHTTPError(err)
 	log.Errorf("Error: %v: %v", code, msg)
 	http.Error(w, msg, code)

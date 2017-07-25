@@ -60,7 +60,9 @@ func assertNotFoundFailure(err error, name string) {
 	assert(err != nil, "requesting a non-existent "+name+" must fail")
 	fe, ok := err.(fission.Error)
 	assert(ok, "error must be a fission Error")
-	assert(fe.Code == fission.ErrorNotFound, "error must be a not found error")
+	if fe.Code != fission.ErrorNotFound {
+		log.Fatalf("error must be a not found error: %v", fe)
+	}
 }
 
 func assertCronSpecFails(err error) {
@@ -187,7 +189,8 @@ func TestHTTPTriggerApi(t *testing.T) {
 func TestEnvironmentApi(t *testing.T) {
 	testEnv := &tpr.Environment{
 		Metadata: api.ObjectMeta{
-			Name: "foo",
+			Name:      "foo",
+			Namespace: api.NamespaceDefault,
 		},
 		Spec: fission.EnvironmentSpec{
 			Runtime: fission.Runtime{
@@ -229,7 +232,8 @@ func TestEnvironmentApi(t *testing.T) {
 func TestWatchApi(t *testing.T) {
 	testWatch := &tpr.Kuberneteswatchtrigger{
 		Metadata: api.ObjectMeta{
-			Name: "xxx",
+			Name:      "xxx",
+			Namespace: api.NamespaceDefault,
 		},
 		Spec: fission.KubernetesWatchTriggerSpec{
 			Namespace: "default",
@@ -272,7 +276,8 @@ func TestWatchApi(t *testing.T) {
 func TestTimeTriggerApi(t *testing.T) {
 	testTrigger := &tpr.Timetrigger{
 		Metadata: api.ObjectMeta{
-			Name: "xxx",
+			Name:      "xxx",
+			Namespace: api.NamespaceDefault,
 		},
 		Spec: fission.TimeTriggerSpec{
 			Cron: "0 30 * * * *",
