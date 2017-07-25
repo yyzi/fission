@@ -137,7 +137,7 @@ func TestPoolmgr(t *testing.T) {
 	if err != nil {
 		log.Panicf("failed to ensure tprs: %v", err)
 	}
-	tpr.WaitForTPRs(kubeClient)
+	fissionClient.WaitForTPRs()
 
 	// create an env on the cluster
 	env, err := fissionClient.Environments(fissionNs).Create(&tpr.Environment{
