@@ -159,7 +159,7 @@ func TestPoolmgr(t *testing.T) {
 
 	// create poolmgr
 	port := 9999
-	err = StartPoolmgr("invalid-controller-url", fissionNs, functionNs, port)
+	err = StartPoolmgr(fissionNs, functionNs, port)
 	if err != nil {
 		log.Panicf("failed to start poolmgr: %v", err)
 	}
