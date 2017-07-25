@@ -15,11 +15,7 @@ import (
 )
 
 func runController(port int) {
-	api, err := controller.MakeAPI()
-	if err != nil {
-		log.Fatalf("Failed to start controller: %v", err)
-	}
-	api.Serve(port)
+	controller.Start(port)
 	log.Fatalf("Error: Controller exited.")
 }
 

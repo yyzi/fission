@@ -325,12 +325,10 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	api, err := MakeAPI()
-	panicIf(err)
-	g.client = client.MakeClient("http://localhost:8888")
+	go Start(8888)
 
-	go api.Serve(8888)
 	time.Sleep(500 * time.Millisecond)
+	g.client = client.MakeClient("http://localhost:8888")
 
 	resp, err := http.Get("http://localhost:8888/")
 	panicIf(err)
