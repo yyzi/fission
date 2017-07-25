@@ -54,6 +54,12 @@ func makeHTTPTriggerSet(fmap *functionServiceMap, fissionClient *tpr.FissionClie
 func (ts *HTTPTriggerSet) subscribeRouter(mr *mutableRouter) {
 	ts.mutableRouter = mr
 	mr.updateRouter(ts.getRouter())
+
+	if ts.fissionClient == nil {
+		// Used in tests only.
+		log.Printf("Skipping continuous trigger updates")
+		return
+	}
 	go ts.watchTriggers()
 }
 
