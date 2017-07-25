@@ -26,9 +26,19 @@ import (
 	"github.com/fission/fission/cache"
 )
 
-type functionServiceMap struct {
-	cache *cache.Cache // map[fission.Metadata]*url.URL
-}
+type (
+	functionServiceMap struct {
+		cache *cache.Cache // map[metadataKey]*url.URL
+	}
+
+	// api.ObjectMeta is not hashable, so we make a hashable copy
+	// of the subset of its fields that are identifiable.
+	metadataKey struct {
+		Name            string
+		Namespace       string
+		ResourceVersion string
+	}
+)
 
 func makeFunctionServiceMap(expiry time.Duration) *functionServiceMap {
 	return &functionServiceMap{
@@ -36,8 +46,17 @@ func makeFunctionServiceMap(expiry time.Duration) *functionServiceMap {
 	}
 }
 
+func keyFromMetadata(m *api.ObjectMeta) *metadataKey {
+	return &metadataKey{
+		Name:            m.Name,
+		Namespace:       m.Namespace,
+		ResourceVersion: m.ResourceVersion,
+	}
+}
+
 func (fmap *functionServiceMap) lookup(f *api.ObjectMeta) (*url.URL, error) {
-	item, err := fmap.cache.Get(*f)
+	mk := keyFromMetadata(f)
+	item, err := fmap.cache.Get(*mk)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +65,8 @@ func (fmap *functionServiceMap) lookup(f *api.ObjectMeta) (*url.URL, error) {
 }
 
 func (fmap *functionServiceMap) assign(f *api.ObjectMeta, serviceUrl *url.URL) {
-	err, old := fmap.cache.Set(*f, serviceUrl)
+	mk := keyFromMetadata(f)
+	err, old := fmap.cache.Set(*mk, serviceUrl)
 	if err != nil {
 		if *serviceUrl == *(old.(*url.URL)) {
 			return
