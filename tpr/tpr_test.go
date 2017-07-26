@@ -398,8 +398,12 @@ func kubernetesWatchTriggerTests(tprClient *rest.RESTClient) {
 }
 
 func TestTpr(t *testing.T) {
-
-	// TODO skip test if we're not configured with a cluster
+	// skip test if no cluster available for testing
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if len(kubeconfig) == 0 {
+		log.Println("Skipping test, no kubernetes cluster")
+		return
+	}
 
 	// Create the client config. Needs the KUBECONFIG env var to
 	// point at a valid kubeconfig.
