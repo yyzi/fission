@@ -52,7 +52,6 @@ type (
 		functionEnv   *cache.Cache // map[string]tpr.Environment
 		fsCache       *functionServiceCache
 		fissionClient *tpr.FissionClient
-		fissionNs     string
 
 		fsCreateChannels map[string]*sync.WaitGroup // xxx no channels here, rename this
 		requestChan      chan *createFuncServiceRequest
@@ -65,7 +64,6 @@ func MakePoolmgr(gpm *GenericPoolManager, fissionClient *tpr.FissionClient, fiss
 		functionEnv:      cache.MakeCache(10*time.Second, 0),
 		fsCache:          fsCache,
 		fissionClient:    fissionClient,
-		fissionNs:        fissionNs,
 		fsCreateChannels: make(map[string]*sync.WaitGroup),
 		requestChan:      make(chan *createFuncServiceRequest),
 	}
@@ -167,8 +165,8 @@ func (poolMgr *Poolmgr) getFunctionEnv(m *api.ObjectMeta) (*tpr.Environment, err
 	}
 
 	// Get env from metadata
-	log.Printf("[%v] getting env from controller", m)
-	env, err = poolMgr.fissionClient.Environments(poolMgr.fissionNs).Get(f.Spec.EnvironmentName)
+	log.Printf("[%v] getting env", m)
+	env, err = poolMgr.fissionClient.Environments(f.Metadata.Namespace).Get(f.Spec.EnvironmentName)
 	if err != nil {
 		return nil, err
 	}
