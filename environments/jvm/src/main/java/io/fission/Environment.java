@@ -1,7 +1,10 @@
 package io.fission;
 
+import static spark.Spark.delete;
+import static spark.Spark.get;
 import static spark.Spark.port;
 import static spark.Spark.post;
+import static spark.Spark.put;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -10,6 +13,8 @@ import java.net.URLClassLoader;
 import java.util.Set;
 
 import org.reflections.Reflections;
+import spark.Request;
+import spark.Response;
 
 public class Environment {
 
@@ -36,39 +41,46 @@ public class Environment {
 		}
 	}
 
+	private Object specialize(Request req, Response res) throws Exception {
+		System.out.println("Specializing environment...");
+		Reflections reflect = loadJar(DEFAULT_CODE_PATH);
+
+		// Discover implementations
+		Set<Class<? extends Function>> impls = reflect.getSubTypesOf(Function.class);
+
+		// Select right implementation
+		Class<? extends Function> impl = impls.iterator().next(); // TODO support multiple implementations
+
+		try {
+			fn = impl.newInstance();
+		}
+		catch (ClassCastException e) {
+			res.status(500);
+			res.body(String.format("Class could not be cast to %s", Function.class.getCanonicalName()));
+		}
+		catch (InstantiationException | IllegalAccessException e2) {
+			res.status(500);
+			res.body(String.format("Could not instantiate user class: %s", impl.getCanonicalName()));
+		}
+		return "";
+	}
+
+	private Object invoke(Request req, Response res) throws Exception {
+		if (fn == null) {
+			res.status(400);
+			res.body("Generic container: no requests supported");
+		}
+
+		return fn.handle(req, res);
+	}
+
 	public void run(int httpPort) {
 		port(httpPort);
-		post("/specialize", (req, res) -> {
-			System.out.println("Specializing environment...");
-			Reflections reflect = loadJar(DEFAULT_CODE_PATH);
+		post("/specialize", this::specialize);
 
-			// Discover implementations
-			Set<Class<? extends Function>> impls = reflect.getSubTypesOf(Function.class);
-
-			// Select right implementation
-			Class<? extends Function> impl = impls.iterator().next(); // TODO support multiple implementations
-
-			try {
-				fn = impl.newInstance();
-			}
-			catch (ClassCastException e) {
-				res.status(500);
-				res.body(String.format("Class could not be cast to %s", Function.class.getCanonicalName()));
-			}
-			catch (InstantiationException | IllegalAccessException e2) {
-				res.status(500);
-				res.body(String.format("Could not instantiate user class: %s", impl.getCanonicalName()));
-			}
-			return "";
-		});
-
-		post("/", (req, res) -> {
-			if (fn == null) {
-				res.status(400);
-				res.body("Generic container: no requests supported");
-			}
-
-			return fn.handle(req, res);
-		});
+		put("/", this::invoke);
+		get("/", this::invoke);
+		post("/", this::invoke);
+		delete("/", this::invoke);
 	}
 }
