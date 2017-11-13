@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -e
-#set -x
+set -x
 
 DIR=$(realpath $(dirname $0))/../
 BUILDDIR=$(realpath $DIR)/build
@@ -98,7 +98,15 @@ build_and_push_env_image() {
     envdir=$2
     imgnamebase=$3
     imgvariant=$4
+    type=$5
 
+    # if this is a builder, copy over the build proxy
+    if [ $type == "builder" ]
+    then
+	cp $DIR/builder/cmd/builder $DIR/environments/$envdir
+    fi
+
+    # choose image variant
     if [ -z "$imgvariant" ]
     then 
         # no variant specified, just use the base name
@@ -111,12 +119,15 @@ build_and_push_env_image() {
         dockerfile="Dockerfile-$imgvariant"
     fi
     echo "Building $envdir -> $imgname:$version using $dockerfile"
-    
+
+    # build any binaries that the env might need
     pushd $DIR/environments/$envdir
     if [ -f build.sh ]
     then
        ./build.sh
-    fi  
+    fi
+
+    # build, tag and push images
     docker build -t fission/$imgname:$version -f $dockerfile .
     docker tag fission/$imgname:$version fission/$imgname:latest
     docker push fission/$imgname:$version
@@ -128,17 +139,28 @@ build_and_push_all_envs() {
     version=$1
 
     # call with version, env dir, image name base, image name variant
-    build_and_push_env_image "$version" "nodejs"   "node-env"     ""
-    build_and_push_env_image "$version" "nodejs"   "node-env"     "debian"
-    build_and_push_env_image "$version" "binary"   "binary-env"   ""
-    build_and_push_env_image "$version" "dotnet"   "dotnet-env"   ""
-    build_and_push_env_image "$version" "dotnet20" "dotnet20-env" ""    
-    build_and_push_env_image "$version" "go"       "go-env"       ""
-    build_and_push_env_image "$version" "perl"     "perl-env"     ""
-    build_and_push_env_image "$version" "php7"     "php-env"      ""
-    build_and_push_env_image "$version" "python"   "python-env"   ""
-    build_and_push_env_image "$version" "python"   "python-env"   "2.7"
-    build_and_push_env_image "$version" "ruby"     "ruby-env"     ""
+#    build_and_push_env_image "$version" "nodejs"   "node-env"     ""       "runtime"
+#    build_and_push_env_image "$version" "nodejs"   "node-env"     "debian" "runtime"
+#    build_and_push_env_image "$version" "binary"   "binary-env"   ""	   "runtime"
+#    build_and_push_env_image "$version" "dotnet"   "dotnet-env"   ""	   "runtime"
+#    build_and_push_env_image "$version" "dotnet20" "dotnet20-env" ""       "runtime"
+#    build_and_push_env_image "$version" "go"       "go-env"       ""	   "runtime"
+#    build_and_push_env_image "$version" "perl"     "perl-env"     ""	   "runtime"
+#    build_and_push_env_image "$version" "php7"     "php-env"      ""       "runtime"
+#    build_and_push_env_image "$version" "ruby"     "ruby-env"     ""
+
+    build_builder_proxy
+    build_and_push_env_image "$version" "python"   "python-env"   ""       "runtime"
+    build_and_push_env_image "$version" "python"   "python-env"   "2.7"    "runtime"
+    build_and_push_env_image "$version" "python/builder"   "python-build-env"   ""    "builder"
+    build_and_push_env_image "$version" "python/builder"   "python-build-env"   "2.7" "builder"
+    
+}
+
+build_builder_proxy() {
+    pushd $DIR/builder/cmd
+    ./build.sh
+    popd
 }
 
 build_charts() {
@@ -256,17 +278,17 @@ attach_github_release_charts() {
 
 }
 
-export GITHUB_TOKEN=$(cat ~/.gh-access-token)
+#export GITHUB_TOKEN=$(cat ~/.gh-access-token)
 
-check_branch
-check_clean
+#check_branch
+#check_clean
 version=$1
 
-build_all $version
-push_all $version
+#build_all $version
+#push_all $version
 build_and_push_all_envs $version 
-build_charts $version
+#build_charts $version
 
-tag_and_release $version
-attach_github_release_cli $version
-attach_github_release_charts $version
+#tag_and_release $version
+#attach_github_release_cli $version
+#attach_github_release_charts $version
