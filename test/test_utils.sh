@@ -185,6 +185,29 @@ helm_install_fission() {
     helm list
 }
 
+wait_for_pod() {
+    id=$1
+    ns=f-$id
+    component=$2
+
+    # wait for component ready
+    while true; do
+      kubectl -n $ns get pod|grep $2|grep Running
+      if [[ $? -eq 0 ]]; then
+          break
+      fi
+      sleep 1
+    done
+}
+
+wait_for_pods() {
+    id=$1
+
+    wait_for_component $id controller
+    wait_for_component $id router
+    wait_for_component $id executor
+}
+
 wait_for_service() {
     id=$1
     svc=$2
@@ -379,6 +402,7 @@ install_and_test() {
 	exit 1
     fi
 
+    wait_for_pods $id
     wait_for_services $id
     set_environment $id
 
