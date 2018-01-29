@@ -2,18 +2,19 @@
 
 #test:disabled
 
+set -x
 set -euo pipefail
 
 ROOT=$(dirname $0)/../..
 
-fn=nodejs-logtest-$(date +%N)
+fn=nodejs-logtest-$(date +%s)
 
 function cleanup {
     echo "Cleanup route"
-    var=$(fission route list | grep $fn | awk '{print $1;}')
-    fission route delete --name $var
-    echo "delete logfile"
-    rm "/tmp/logfile"
+    routename=$(fission route list | grep $fn | awk '{print $1;}')
+    fission route delete --name $routename
+    #echo "delete logfile"
+    #rm -f "/tmp/logfile"
 }
 
 # Create a hello world function in nodejs, test it with an http trigger
