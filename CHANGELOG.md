@@ -1,16 +1,50 @@
-# 0.5.0
-[Documentation](http://fission.io/docs/0.5.0/)
-## Downloads for 0.5.0
+# 0.6.0
+[Documentation](http://fission.io/docs/0.6.0/)
+## Downloads for 0.6.0
+
 
 filename | sha256 hash
 -------- | -----------
-[fission-core-0.5.0.tgz](https://github.com/fission/fission/releases/download/0.5.0/fission-core-0.5.0.tgz) | `6ee668de0870a52d16a051bb5d60c12e523a87c54269b321bdab6dd97f883ee4`
-[fission-all-0.5.0.tgz](https://github.com/fission/fission/releases/download/0.5.0/fission-all-0.5.0.tgz) | `2f72fe4ba836d84e60538ecf401a508384bb194c979688be69f1370af0c071bb`
-[fission-cli-osx](https://github.com/fission/fission/releases/download/0.5.0/fission-cli-osx) | `1b7de8a5bbf7710ba66997003e7a63f9887ef89d7f7e027c31a78f2f51a11536`
-[fission-cli-linux](https://github.com/fission/fission/releases/download/0.5.0/fission-cli-linux) | `7bbff6d166daf16f6e08b82753cbd6bd0d407e12372a0c6612b6f1a11ed39e09`
-[fission-cli-windows.exe](https://github.com/fission/fission/releases/download/0.5.0/fission-cli-windows.exe) | `5db18472bd071daf39ad681c6ad3b4fd4e89ccb243f81e7ea67785e0c7b2f209`
+[fission-all-0.6.0.tgz](https://github.com/fission/fission/releases/download/0.6.0/fission-all-0.6.0.tgz) | `a6c4d56e7cc3d14ee4524bbbe1677d14399288602c9a5bc103356cd826f1df8c`
+[fission-core-0.6.0.tgz](https://github.com/fission/fission/releases/download/0.6.0/fission-core-0.6.0.tgz) | `707c7a53115da44e604c820bf42915e2b63c6d075f89a87ff78c0e6c3d0e7b38`
+[fission-cli-linux](https://github.com/fission/fission/releases/download/0.6.0/fission-cli-linux) | `f44a622f0a280d8ccb41ac5fa330cedf1e7ba2a82e0c5dbf1b680adfed3f39c3`
+[fission-cli-osx](https://github.com/fission/fission/releases/download/0.6.0/fission-cli-osx) | `085f23ca986a000d8e09908b57619cc884d03d083930b5bab83948f1a27e5f4c`
+[fission-cli-windows.exe](https://github.com/fission/fission/releases/download/0.6.0/fission-cli-windows.exe) | `ce5f9d1fd52ac15dde184cddf5fe5f9921eac115c70f9811af9e69efa7282203`
 
 # Change Log
+
+## [latest](https://github.com/fission/fission/tree/latest) (2018-03-01)
+[Full Changelog](https://github.com/fission/fission/compare/0.6.0...latest)
+
+## [0.6.0](https://github.com/fission/fission/tree/0.6.0) (2018-03-01)
+[Full Changelog](https://github.com/fission/fission/compare/0.5.0...0.6.0)
+
+**Merged pull requests:**
+
+- Release checklist [\#522](https://github.com/fission/fission/pull/522) ([soamvasani](https://github.com/soamvasani))
+- Fix post-install-job container failure due to command not found [\#514](https://github.com/fission/fission/pull/514) ([life1347](https://github.com/life1347))
+- Replace the release with the latest tag. [\#513](https://github.com/fission/fission/pull/513) ([smruthi2187](https://github.com/smruthi2187))
+- Go: Set image to right version, update example readme [\#497](https://github.com/fission/fission/pull/497) ([soamvasani](https://github.com/soamvasani))
+- Remove a noisy log from router [\#495](https://github.com/fission/fission/pull/495) ([soamvasani](https://github.com/soamvasani))
+- Improve release script [\#494](https://github.com/fission/fission/pull/494) ([life1347](https://github.com/life1347))
+- Update SHA256 HASH in CHANGELOG.md due to binaries update [\#493](https://github.com/fission/fission/pull/493) ([life1347](https://github.com/life1347))
+- Go builder for single file functions [\#492](https://github.com/fission/fission/pull/492) ([soamvasani](https://github.com/soamvasani))
+- CI modifications [\#491](https://github.com/fission/fission/pull/491) ([smruthi2187](https://github.com/smruthi2187))
+- Add upgrade guide from 0.4.x to 0.5.0 [\#490](https://github.com/fission/fission/pull/490) ([life1347](https://github.com/life1347))
+- Version -\> 0.5.0 [\#489](https://github.com/fission/fission/pull/489) ([life1347](https://github.com/life1347))
+- Detect fission namespace in cli [\#519](https://github.com/fission/fission/pull/519) ([soamvasani](https://github.com/soamvasani))
+- Default values for FISSION\_\* env vars [\#518](https://github.com/fission/fission/pull/518) ([soamvasani](https://github.com/soamvasani))
+- Add chart version to job name [\#516](https://github.com/fission/fission/pull/516) ([soamvasani](https://github.com/soamvasani))
+- Fix CLI not update function's secret/configmap correctly [\#512](https://github.com/fission/fission/pull/512) ([life1347](https://github.com/life1347))
+- Adds latest tags and pushes to dockerhub for fetcher and fission-bundle [\#509](https://github.com/fission/fission/pull/509) ([vishal-biyani](https://github.com/vishal-biyani))
+- Fixes the backward compatibility with older environment versions [\#508](https://github.com/fission/fission/pull/508) ([vishal-biyani](https://github.com/vishal-biyani))
+- Update Fn: Executor New Deployment [\#504](https://github.com/fission/fission/pull/504) ([vishal-biyani](https://github.com/vishal-biyani))
+- Adds default resources for fetcher pod [\#500](https://github.com/fission/fission/pull/500) ([vishal-biyani](https://github.com/vishal-biyani))
+- Documentation Revamp [\#496](https://github.com/fission/fission/pull/496) ([vishal-biyani](https://github.com/vishal-biyani))
+- Delete and list orphan pkgs [\#468](https://github.com/fission/fission/pull/468) ([smruthi2187](https://github.com/smruthi2187))
+- Service type ClusterIP - Controller port forward through CLI [\#431](https://github.com/fission/fission/pull/431) ([prithviramesh](https://github.com/prithviramesh))
+- Istio integration [\#421](https://github.com/fission/fission/pull/421) ([life1347](https://github.com/life1347))
+- Implement support for Azure storage message queue triggers [\#371](https://github.com/fission/fission/pull/371) ([peterhuene](https://github.com/peterhuene))
 
 ## [0.5.0](https://github.com/fission/fission/tree/0.5.0) (2018-02-07)
 [Full Changelog](https://github.com/fission/fission/compare/0.4.1...0.5.0)
@@ -31,6 +65,7 @@ filename | sha256 hash
 - NewDeploy Doc [\#432](https://github.com/fission/fission/pull/432) ([vishal-biyani](https://github.com/vishal-biyani))
 - Add go vet check [\#430](https://github.com/fission/fission/pull/430) ([life1347](https://github.com/life1347))
 - Fix potential nil pointer problem [\#485](https://github.com/fission/fission/pull/485) ([life1347](https://github.com/life1347))
+- Add simple usage doc for accessing secret/configmap in function [\#484](https://github.com/fission/fission/pull/484) ([life1347](https://github.com/life1347))
 - Helm hook bugfixes: run on upgrade, delete on completion [\#473](https://github.com/fission/fission/pull/473) ([soamvasani](https://github.com/soamvasani))
 - Archive pruner [\#471](https://github.com/fission/fission/pull/471) ([smruthi2187](https://github.com/smruthi2187))
 - Build and push fluentd image on release; update chart to use that image [\#462](https://github.com/fission/fission/pull/462) ([soamvasani](https://github.com/soamvasani))
