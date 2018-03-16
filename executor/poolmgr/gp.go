@@ -475,7 +475,6 @@ func (gp *GenericPool) createPool() error {
 		gracePeriodSeconds = gp.env.Spec.TerminationGracePeriod
 	}
 	
-
 	podAnnotation := make(map[string]string)
 
 	if gp.useIstio && gp.env.Spec.AllowAccessToExternalNetwork {
