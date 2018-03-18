@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"strings"
 
 	"github.com/mholt/archiver"
 	"github.com/satori/go.uuid"
@@ -62,6 +63,7 @@ type (
 )
 
 const (
+	ERR_EXISTS = "exists"
 	FETCH_SOURCE = iota
 	FETCH_DEPLOYMENT
 	FETCH_URL // remove this?
@@ -441,7 +443,7 @@ func (fetcher *Fetcher) UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 func (fetcher *Fetcher) rename(src string, dst string) error {
 	err := os.Rename(src, dst)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), ERR_EXISTS) {
 		return errors.New(fmt.Sprintf("Failed to move file: %v", err))
 	}
 	return nil
