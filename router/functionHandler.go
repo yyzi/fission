@@ -94,6 +94,7 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 
 			// setting the req host to executor host explicity.
 			req.URL.Host = roundTripper.funcHandler.executor.GetExecutorUrl()
+			transport.CloseIdleConnections()
 			log.Printf("just set the request host explicitly before making a call to executor")
 
 			// send a request to executor to specialize a new pod
@@ -102,14 +103,14 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 			if err != nil {
 				// We might want a specific error code or header for fission failures as opposed to
 				// user function bugs.
-				log.Printf("get service for function failed, err: %v")
+				log.Printf("get service for function failed, err: %v", err)
 				return nil, err
 			}
 
 			// parse the address into url
 			serviceUrl, err = url.Parse(fmt.Sprintf("http://%v", service))
 			if err != nil {
-				log.Printf("url.parse failed, err: %v")
+				log.Printf("url.parse failed, err: %v", err)
 				return nil, err
 			}
 
