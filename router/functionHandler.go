@@ -92,6 +92,10 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 		if needExecutor {
 			log.Printf("Calling getServiceForFunction for function: %s", roundTripper.funcHandler.function.Name)
 
+			// setting the req host to executor host explicity.
+			req.URL.Host = roundTripper.funcHandler.executor.GetExecutorUrl()
+			log.Printf("just set the request host explicitly before making a call to executor")
+
 			// send a request to executor to specialize a new pod
 			service, err := roundTripper.funcHandler.executor.GetServiceForFunction(
 				roundTripper.funcHandler.function)

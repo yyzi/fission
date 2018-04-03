@@ -153,3 +153,7 @@ func (c *Client) _tapService(serviceUrlStr string) error {
 	}
 	return nil
 }
+
+func (c *Client) GetExecutorUrl() string {
+	return strings.TrimPrefix(c.executorUrl, "http://")
+}
