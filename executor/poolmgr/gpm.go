@@ -18,14 +18,14 @@ package poolmgr
 
 import (
 	"context"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"k8s.io/client-go/kubernetes"
 	"time"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api"
 
 	k8sCache "k8s.io/client-go/tools/cache"
 
