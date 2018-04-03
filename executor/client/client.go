@@ -29,17 +29,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/fission/fission"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Client struct {
 	executorUrl string
 	tappedByUrl map[string]bool
 	requestChan chan string
+	k8sClient *kubernetes.Clientset
 }
 
-func MakeClient(executorUrl string) *Client {
+func MakeClient(executorUrl string, k8sClient *kubernetes.Clientset) *Client {
 	c := &Client{
 		executorUrl: strings.TrimSuffix(executorUrl, "/"),
+		k8sClient: k8sClient,
 		tappedByUrl: make(map[string]bool),
 		requestChan: make(chan string),
 	}
@@ -47,13 +50,51 @@ func MakeClient(executorUrl string) *Client {
 	return c
 }
 
+
+
+func (c *Client) debugPrintServiceObject(metadata *metav1.ObjectMeta) {
+	log.Printf("debugPrintServiceObject from GetServiceForFunction for function: %s exeecutorUrl : %s", metadata.Name, c.executorUrl)
+	executorService := strings.TrimPrefix(c.executorUrl, "http://")
+	service := strings.Split(executorService, ".")
+	if len(service) == 0 {
+		log.Printf("Unable to split executor service into name and namespace")
+		return
+	}
+	if c.k8sClient == nil {
+		log.Printf("Unit test, k8sclient set nil")
+		return
+	}
+
+	log.Printf("ns: %s, name: %s", service[1], service[0])
+	svcObj, err := c.k8sClient.CoreV1().Services(service[1]).Get(service[0], metav1.GetOptions{})
+	if err == nil {
+		log.Printf("service address : %s", svcObj.Spec.ClusterIP)
+		log.Printf("also dumping service object: %v", svcObj)
+		return
+	}
+
+	log.Printf("error getting service object name: %s and namespace: %s, err : %v", service[0], service[1], err)
+}
+
+
+
 func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, error) {
 	executorUrl := c.executorUrl + "/v2/getServiceForFunction"
+
+	c.debugPrintServiceObject(metadata)
 
 	body, err := json.Marshal(metadata)
 	if err != nil {
 		return "", err
 	}
+
+	req, err := http.NewRequest("POST", executorUrl, bytes.NewReader(body))
+	if err != nil {
+		log.Printf("error making a http request object in executor client")
+	} else {
+		log.Printf("http request object: %v", req)
+	}
+
 
 	resp, err := http.Post(executorUrl, "application/json", bytes.NewReader(body))
 	if err != nil {

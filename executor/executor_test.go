@@ -166,7 +166,7 @@ func TestExecutor(t *testing.T) {
 	}
 
 	// connect poolmgr client
-	poolmgrClient := client.MakeClient(fmt.Sprintf("http://localhost:%v", port))
+	poolmgrClient := client.MakeClient(fmt.Sprintf("http://localhost:%v", port), nil)
 
 	// Wait for pool to be created (we don't actually need to do
 	// this, since the API should do the right thing in any case).

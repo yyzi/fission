@@ -29,6 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/fission/fission"
+	"os"
+	"github.com/gorilla/handlers"
 )
 
 func (executor *Executor) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +127,7 @@ func (executor *Executor) Serve(port int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	executor.ndm.Run(ctx)
-	executor.gpm.Run(ctx)
-	r.Use(fission.LoggingMiddleware)
-	log.Fatal(http.ListenAndServe(address, r))
+
+	//r.Use(fission.LoggingMiddleware)
+	log.Fatal(http.ListenAndServe(address, handlers.LoggingHandler(os.Stdout, r)))
 }

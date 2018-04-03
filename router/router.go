@@ -77,14 +77,15 @@ func Start(port int, executorUrl string) {
 
 	fmap := makeFunctionServiceMap(time.Minute)
 
-	fissionClient, _, _, err := crd.MakeFissionClient()
+	fissionClient, k8sClient, _, err := crd.MakeFissionClient()
 	if err != nil {
 		log.Fatalf("Error connecting to kubernetes API: %v", err)
 	}
 
 	restClient := fissionClient.GetCrdClient()
 
-	executor := executorClient.MakeClient(executorUrl)
+	executor := executorClient.MakeClient(executorUrl, k8sClient)
+
 	triggers, _, fnStore := makeHTTPTriggerSet(fmap, fissionClient, executor, restClient)
 	resolver := makeFunctionReferenceResolver(fnStore)
 
