@@ -84,12 +84,12 @@ func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, err
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", executorUrl, bytes.NewReader(body))
-	if err != nil {
-		log.Printf("error making a http request object in executor client")
-	} else {
-		log.Printf("http request object: %v", req)
-	}
+	//req, err := http.NewRequest("POST", executorUrl, bytes.NewReader(body))
+	//if err != nil {
+	//	log.Printf("error making a http request object in executor client")
+	//} else {
+	//	log.Printf("http request object: %v", req)
+	//}
 
 	httpClient := &http.Client{}
 	resp, err := httpClient.Post(executorUrl, "application/json", bytes.NewReader(body))
