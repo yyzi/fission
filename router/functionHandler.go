@@ -45,7 +45,6 @@ type RetryingRoundTripper struct {
 	funcHandler    *functionHandler
 }
 
-
 // RoundTrip is a custom transport with retries for http requests that forwards the request to the right serviceUrl, obtained
 // from router's cache or from executor if router entry is stale.
 //

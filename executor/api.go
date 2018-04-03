@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/fission/fission"
-	"os"
 	"github.com/gorilla/handlers"
+	"os"
 )
 
 func (executor *Executor) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {

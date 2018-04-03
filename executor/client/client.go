@@ -36,21 +36,19 @@ type Client struct {
 	executorUrl string
 	tappedByUrl map[string]bool
 	requestChan chan string
-	k8sClient *kubernetes.Clientset
+	k8sClient   *kubernetes.Clientset
 }
 
 func MakeClient(executorUrl string, k8sClient *kubernetes.Clientset) *Client {
 	c := &Client{
 		executorUrl: strings.TrimSuffix(executorUrl, "/"),
-		k8sClient: k8sClient,
+		k8sClient:   k8sClient,
 		tappedByUrl: make(map[string]bool),
 		requestChan: make(chan string),
 	}
 	go c.service()
 	return c
 }
-
-
 
 func (c *Client) debugPrintServiceObject(metadata *metav1.ObjectMeta) {
 	log.Printf("debugPrintServiceObject from GetServiceForFunction for function: %s exeecutorUrl : %s", metadata.Name, c.executorUrl)
@@ -75,8 +73,6 @@ func (c *Client) debugPrintServiceObject(metadata *metav1.ObjectMeta) {
 
 	log.Printf("error getting service object name: %s and namespace: %s, err : %v", service[0], service[1], err)
 }
-
-
 
 func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, error) {
 	executorUrl := c.executorUrl + "/v2/getServiceForFunction"
