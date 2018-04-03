@@ -102,12 +102,14 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 			if err != nil {
 				// We might want a specific error code or header for fission failures as opposed to
 				// user function bugs.
+				log.Printf("get service for function failed, err: %v")
 				return nil, err
 			}
 
 			// parse the address into url
 			serviceUrl, err = url.Parse(fmt.Sprintf("http://%v", service))
 			if err != nil {
+				log.Printf("url.parse failed, err: %v")
 				return nil, err
 			}
 
