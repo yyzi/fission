@@ -91,9 +91,9 @@ func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, err
 	//	log.Printf("http request object: %v", req)
 	//}
 
-	httpClient := &http.Client{}
-	resp, err := httpClient.Post(executorUrl, "application/json", bytes.NewReader(body))
-	//resp, err := http.Post(executorUrl, "application/json", bytes.NewReader(body))
+	//httpClient := &http.Client{}
+	//resp, err := httpClient.Post(executorUrl, "application/json", bytes.NewReader(body))
+	resp, err := http.Post(executorUrl, "application/json", bytes.NewReader(body))
 	if err != nil {
 		log.Printf("[%v] http post request for getServiceForFunction errored out.", metadata.Name)
 		return "", err

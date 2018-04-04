@@ -140,7 +140,7 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 		// over-riding default settings.
 		transport.DialContext = (&net.Dialer{
 			Timeout:   timeout,
-			KeepAlive: 30 * time.Second,
+			KeepAlive: 10 * time.Second,
 		}).DialContext
 
 		// forward the request to the function service
