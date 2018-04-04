@@ -37,14 +37,21 @@ type Client struct {
 	tappedByUrl map[string]bool
 	requestChan chan string
 	k8sClient   *kubernetes.Clientset
+	httpClient  *http.Client
 }
 
 func MakeClient(executorUrl string, k8sClient *kubernetes.Clientset) *Client {
+	transport := http.DefaultTransport.(*http.Transport)
+	transport.IdleConnTimeout = 30 * time.Second
+
 	c := &Client{
 		executorUrl: strings.TrimSuffix(executorUrl, "/"),
 		k8sClient:   k8sClient,
 		tappedByUrl: make(map[string]bool),
 		requestChan: make(chan string),
+		httpClient: &http.Client{
+			Transport: transport,
+		},
 	}
 	go c.service()
 	return c
@@ -75,6 +82,15 @@ func (c *Client) debugPrintServiceObject(metadata *metav1.ObjectMeta) {
 }
 
 func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, error) {
+	var resp *http.Response
+	defer func() {
+		log.Printf("Inside defer, closing resp and idle conns")
+		if resp != nil {
+			resp.Body.Close()
+		}
+		c.httpClient.Transport.(*http.Transport).CloseIdleConnections()
+	}()
+
 	executorUrl := c.executorUrl + "/v2/getServiceForFunction"
 
 	c.debugPrintServiceObject(metadata)
@@ -84,21 +100,11 @@ func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (string, err
 		return "", err
 	}
 
-	//req, err := http.NewRequest("POST", executorUrl, bytes.NewReader(body))
-	//if err != nil {
-	//	log.Printf("error making a http request object in executor client")
-	//} else {
-	//	log.Printf("http request object: %v", req)
-	//}
-
-	//httpClient := &http.Client{}
-	//resp, err := httpClient.Post(executorUrl, "application/json", bytes.NewReader(body))
-	resp, err := http.Post(executorUrl, "application/json", bytes.NewReader(body))
+	resp, err = c.httpClient.Post(executorUrl, "application/json", bytes.NewReader(body))
 	if err != nil {
 		log.Printf("[%v] http post request for getServiceForFunction errored out.", metadata.Name)
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		log.Printf("[%v] response status code not 200", metadata.Name)
@@ -142,7 +148,7 @@ func (c *Client) TapService(serviceUrl *url.URL) {
 func (c *Client) _tapService(serviceUrlStr string) error {
 	executorUrl := c.executorUrl + "/v2/tapService"
 
-	resp, err := http.Post(executorUrl, "application/octet-stream", bytes.NewReader([]byte(serviceUrlStr)))
+	resp, err := c.httpClient.Post(executorUrl, "application/octet-stream", bytes.NewReader([]byte(serviceUrlStr)))
 	if err != nil {
 		return err
 	}
