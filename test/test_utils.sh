@@ -164,11 +164,12 @@ helm_install_fission() {
     fluentdImageTag=${9}
     pruneInterval="${10}"
     routerServiceType=${11}
+    serviceType=${12}
 
     ns=f-$id
     fns=f-func-$id
 
-    helmVars=image=$image,imageTag=$imageTag,fetcherImage=$fetcherImage,fetcherImageTag=$fetcherImageTag,functionNamespace=$fns,controllerPort=$controllerNodeport,routerPort=$routerNodeport,pullPolicy=Always,analytics=false,logger.fluentdImage=$fluentdImage,logger.fluentdImageTag=$fluentdImageTag,pruneInterval=$pruneInterval,routerServiceType=$routerServiceType
+    helmVars=image=$image,imageTag=$imageTag,fetcherImage=$fetcherImage,fetcherImageTag=$fetcherImageTag,functionNamespace=$fns,controllerPort=$controllerNodeport,routerPort=$routerNodeport,pullPolicy=Always,analytics=false,logger.fluentdImage=$fluentdImage,logger.fluentdImageTag=$fluentdImageTag,pruneInterval=$pruneInterval,routerServiceType=$routerServiceType,serviceType=$serviceType
 
     timeout 30 bash -c "helm_setup"
 
@@ -231,16 +232,16 @@ helm_uninstall_fission() {(set +e
 )}
 export -f helm_uninstall_fission
 
-port_forward_services() {
-    id=$1
-    ns=f-$id
-    svc=$2
-    port=$3
-
-    kubectl get pods -l svc="$svc" -o name --namespace $ns | \
-        sed 's/^.*\///' | \
-        xargs -I{} kubectl port-forward {} $port:$port -n $ns &
-}
+#port_forward_services() {
+#    id=$1
+#    ns=f-$id
+#    svc=$2
+#    port=$3
+#
+#    kubectl get pods -l svc="$svc" -o name --namespace $ns | \
+#        sed 's/^.*\///' | \
+#        xargs -I{} kubectl port-forward {} $port:$port -n $ns &
+#}
 
 dump_builder_pod_logs() {
     bns=$1
@@ -392,6 +393,44 @@ run_all_tests() {
     done
 }
 
+set_environment() {
+    id=$1
+    ns=f-$id
+
+    export FISSION_URL=http://$(kubectl -n $ns get svc controller -o jsonpath='{...ip}')
+    export FISSION_ROUTER=$(kubectl -n $ns get svc router -o jsonpath='{...ip}')
+
+    # set path to include cli
+    export PATH=$ROOT/fission:$PATH
+}
+
+wait_for_service() {
+    id=$1
+    svc=$2
+
+    ns=f-$id
+    while true
+    do
+	ip=$(kubectl -n $ns get svc $svc -o jsonpath='{...ip}')
+	if [ ! -z $ip ]
+	then
+	    break
+	fi
+	echo Waiting for service $svc...
+	sleep 1
+    done
+}
+
+wait_for_services() {
+    id=$1
+
+    wait_for_service $id controller
+    wait_for_service $id router
+
+    echo Waiting for service is routable...
+    sleep 10
+}
+
 run_test() {
     file=$1
 
@@ -427,6 +466,7 @@ install_and_test() {
     fluentdImageTag=$6
     pruneInterval=$7
     routerServiceType=$8
+    serviceType=$9
 
     controllerPort=31234
     routerPort=31235
@@ -435,7 +475,7 @@ install_and_test() {
     
     id=$(generate_test_id)
     trap "helm_uninstall_fission $id" EXIT
-    helm_install_fission $id $image $imageTag $fetcherImage $fetcherImageTag $controllerPort $routerPort $fluentdImage $fluentdImageTag $pruneInterval $routerServiceType
+    helm_install_fission $id $image $imageTag $fetcherImage $fetcherImageTag $controllerPort $routerPort $fluentdImage $fluentdImageTag $pruneInterval $routerServiceType $serviceType
     helm status $id | grep STATUS | grep -i deployed
     if [ $? -ne 0 ]; then
         describe_all_pods $id
@@ -446,7 +486,10 @@ install_and_test() {
 
     export PATH=$ROOT/fission:$PATH
 
-    port_forward_services $id "router" 8888
+    #port_forward_services $id "router" 8888
+    wait_for_services $id
+    set_environment $id
+
     port_forward_services $id "nats-streaming" 4222
 
     export FISSION_ROUTER="127.0.0.1:8888"
