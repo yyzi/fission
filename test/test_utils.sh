@@ -503,7 +503,7 @@ install_and_test() {
 
     port_forward_services $id "nats-streaming" 4222
 
-    export FISSION_ROUTER="127.0.0.1:8888"
+#    export FISSION_ROUTER="127.0.0.1:8888"
     export FISSION_NATS_STREAMING_URL="http://defaultFissionAuthToken@127.0.0.1:4222"
 
     run_all_tests $id
