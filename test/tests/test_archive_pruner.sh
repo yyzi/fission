@@ -38,8 +38,17 @@ get_archive_url_from_package() {
     url=`kubectl get package $1 -ojsonpath='{.spec.deployment.url}'`
 }
 
+#get_archive_from_storage() {
+#    http_status=`curl -sw "%{http_code}" $1 -o /tmp/file`
+#}
+
 get_archive_from_storage() {
-    http_status=`curl -sw "%{http_code}" $1 -o /tmp/file`
+    storage_service_url=$1
+    controller_ip=$(kubectl -n $ns get svc controller -o jsonpath='{...ip}')
+    controller_proxy_url=`echo $storage_service_url | sed -e "s/storagesvc.$FISSION_NAMESPACE/$controller_ip\/proxy\/storage/"`
+    log "controller_proxy_url=$controller_proxy_url"
+    http_status=`curl -sw "%{http_code}" $controller_proxy_url -o /tmp/file`
+    echo "http_status: $http_status"
 }
 
 #1. declare trap to cleanup for all the required signals
