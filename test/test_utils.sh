@@ -457,6 +457,17 @@ run_test() {
 	fi
 }
 
+port_forward_services() {
+    id=$1
+    ns=f-$id
+    svc=$2
+    port=$3
+
+    kubectl get pods -l svc="$svc" -o name --namespace $ns | \
+        sed 's/^.*\///' | \
+        xargs -I{} kubectl port-forward {} $port:$port -n $ns &
+}
+
 install_and_test() {
     image=$1
     imageTag=$2
