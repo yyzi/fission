@@ -43,6 +43,9 @@ fi
 getPodName() {
     NS=$1
     POD=$2
+
+    kubectl -n ${NS} get po
+
     # find pod is ready to serve
     JSONPATH="{range .items[*]}{'\n'}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}"
     kubectl -n ${NS} get po -o jsonpath="$JSONPATH" \
@@ -50,8 +53,6 @@ getPodName() {
         | grep ${POD} \
         | head -n 1 \
         | cut -f1 -d":"
-
-    kubectl -n ${NS} get po
 }
 
 # retry function adapted from:
