@@ -149,10 +149,14 @@ func (pkgw *packageWatcher) build(buildCache *cache.Cache, srcpkg *crd.Package) 
 				break
 			}
 
-			// Add the package getter rolebinding to builder sa
+			// Add the package getter rolebinding to builder sa.
+			// Note that if there's an error setting up the rolebinding, the package cant be downloaded by the fetcher and build will eventually fail. so making an early return here.
 			err := fission.SetupRoleBinding(pkgw.k8sClient, fission.PackageGetterRB, pkg.Metadata.Namespace, fission.PackageGetterCR, fission.ClusterRole, fission.FissionBuilderSA, ns)
 			if err != nil {
 				log.Printf("Error : %v in setting up the role binding %s for pkg : %s.%s", err, fission.PackageGetterRB, pkg.Metadata.Name, pkg.Metadata.Namespace)
+				return
+			} else {
+				log.Printf("Setup rolebinding for sa : %s.%s for pkg : %s.%s", fission.FissionBuilderSA, ns, )
 			}
 
 			uploadResp, buildLogs, err := buildPackage(pkgw.fissionClient, ns, pkgw.storageSvcUrl, pkg)

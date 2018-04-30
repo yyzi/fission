@@ -269,7 +269,7 @@ func (fetcher *Fetcher) Fetch(req FetchRequest) (int, error) {
 			// download and verify
 			err = downloadUrl(archive.URL, tmpPath)
 			if err != nil {
-				e := fmt.Sprintf("Failed to download url %v: %v", req.Url, err)
+				e := fmt.Sprintf("Failed to download url %v: %v", archive.URL, err)
 				log.Printf(e)
 				return 400, errors.New(e)
 			}
