@@ -2,6 +2,7 @@
 
 
 set -euo pipefail
+#test:disabled
 
 ROOT=$(dirname $0)/../..
 

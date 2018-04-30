@@ -134,11 +134,11 @@ dump_function_pod_logs() {
     for p in $functionPods
     do
 	echo "--- builder env pod logs $p ---"
-	containers=$(kubectl -n $fns get $p -o jsonpath={.spec.containers[*].name} --ignore-not-found)
+	containers=$(kubectl -n $ns get $p -o jsonpath={.spec.containers[*].name} --ignore-not-found)
 	for c in $containers
 	do
 	    echo "--- builder env pod logs $p: container $c ---"
-	    kubectl -n $fns logs $p $c || true
+	    kubectl -n $ns logs $p $c || true
 	    echo "--- end builer env pod logs $p: container $c ---"
 	done
 	echo "--- end builder env pod logs $p ---"

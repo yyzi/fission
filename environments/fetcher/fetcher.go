@@ -267,6 +267,7 @@ func (fetcher *Fetcher) Fetch(req FetchRequest) (int, error) {
 			}
 		} else {
 			// download and verify
+			log.Printf("dumping pkg object : %v", pkg)
 			err = downloadUrl(archive.URL, tmpPath)
 			if err != nil {
 				e := fmt.Sprintf("Failed to download url %v: %v", archive.URL, err)
