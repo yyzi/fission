@@ -440,12 +440,14 @@ run_all_tests() {
     export FISSION_NAMESPACE=f-$id
     export FUNCTION_NAMESPACE=f-func-$id
 
-    test_files=$(find $ROOT/test/tests -iname 'test_*.sh')
+#    test_files=$(find $ROOT/test/tests -iname 'test_*.sh')
 
-    for file in $test_files
-    do
-    run_test ${file}
-    done
+    run_test $ROOT/test/tests/test_env_vars.sh
+
+#    for file in $test_files
+#    do
+#    run_test ${file}
+#    done
 }
 
 run_test() {

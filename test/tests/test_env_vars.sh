@@ -50,6 +50,8 @@ getPodName() {
         | grep ${POD} \
         | head -n 1 \
         | cut -f1 -d":"
+
+    kubectl -n ${NS} get po
 }
 
 # retry function adapted from:

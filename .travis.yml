@@ -2,9 +2,9 @@ sudo: required
 
 dist: trusty
 
-branches:
-  only:
-  - master
+#branches:
+#  only:
+#  - master
 
 language: go
 
@@ -34,12 +34,12 @@ env:
 script:
   - cd ${TRAVIS_BUILD_DIR}
   - glide install -v
-  - ./fission-bundle/build.sh
-  - hack/verify-gofmt.sh
-  - hack/verify-govet.sh
-  - hack/runtests.sh
   - test/build_and_test.sh
-  - test/upgrade/fission_upgrade_test.sh
+#  - ./fission-bundle/build.sh
+#  - hack/verify-gofmt.sh
+#  - hack/verify-govet.sh
+#  - hack/runtests.sh
+#  - test/upgrade/fission_upgrade_test.sh
 
 notifications:
   slack:
