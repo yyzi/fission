@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+#test:disabled
 
 # Use package command to create two packages one with source
 # archive and the other with deploy archive. Also, create a 

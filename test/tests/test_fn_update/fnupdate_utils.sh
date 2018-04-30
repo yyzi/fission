@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 #
 # Common methods used for testing function update
 #

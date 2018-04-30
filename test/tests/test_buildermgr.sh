@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+#test:disabled
 
 # Create a function with source package in python 
 # to test builder manger functionality. 

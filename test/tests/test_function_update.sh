@@ -1,6 +1,8 @@
 #!/bin/bash
 
 set -euo pipefail
+#test:disabled
+
 ROOT=$(dirname $0)/../..
 
 fn=nodejs-hello-$(date +%s)

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+#test:disabled
 
 # test_env_vars.sh - tests whether a user is able to add environment variables to a Fission environment deployment
 

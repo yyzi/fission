@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+#test:disabled
 
 source $(dirname $0)/fnupdate_utils.sh
 

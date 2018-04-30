@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+#test:disabled
 
 # global variables
 pkg=""

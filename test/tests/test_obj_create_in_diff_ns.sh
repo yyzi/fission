@@ -127,11 +127,32 @@ builder_mgr_test_2() {
     cleanup python-builder-env "default" func4 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"
 }
 
+dump_function_pod_logs() {
+    ns=$1
+
+    functionPods=$(kubectl -n $ns get pod -o name)
+    for p in $functionPods
+    do
+	echo "--- builder env pod logs $p ---"
+	containers=$(kubectl -n $fns get $p -o jsonpath={.spec.containers[*].name} --ignore-not-found)
+	for c in $containers
+	do
+	    echo "--- builder env pod logs $p: container $c ---"
+	    kubectl -n $fns logs $p $c || true
+	    echo "--- end builer env pod logs $p: container $c ---"
+	done
+	echo "--- end builder env pod logs $p ---"
+    done
+}
+
 builder_mgr_test_1() {
     log "Starting builder_mgr_test_1 with env and fn in different ns"
-    fission env create --name python-builder-env --envns "ns1-$id" --builder fission/python-builder --image fission/python-env
+    fission env create --name python-builder-env-1 --envns "ns3-$id" --builder fission/python-builder --image fission/python-env
     zip -jr src-pkg.zip $ROOT/examples/python/sourcepkg/
-    pkg=$(fission package create --src src-pkg.zip --env python-builder-env --envns "ns1-$id" --buildcmd "./build.sh" --pkgns "ns2-$id"| cut -f2 -d' '| tr -d \')
+    pkg=$(fission package create --src src-pkg.zip --env python-builder-env-1 --envns "ns3-$id" --buildcmd "./build.sh" --pkgns "ns2-$id"| cut -f2 -d' '| tr -d \')
+    log "package created : $pkg in ns2-$id"
+    log "dumping pkg object before curl"
+    kubectl get package "$pkg" -ojson -n "ns2-$id"
     #timeout 60s bash -c "waitBuild $pkg"
     sleep 60
     fission fn create --name func3 --fns "ns2-$id" --pkg $pkg --entrypoint "user.main"
@@ -141,14 +162,28 @@ builder_mgr_test_1() {
     sleep 5
     response=$(curl http://$FISSION_ROUTER/func3)
     echo $response
-    echo $response | grep -i "a: 1 b: {c: 3, d: 4}" || (log "response a: 1 b: {c: 3, d: 4} not received" &&
-    cleanup python-builder-env "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"  && exit 1)
+    log "dumping pkg object after curl"
+    kubectl get package "$pkg" -ojson -n "ns2-$id"
+
+    log "dumping builder env pod logs"
+    dump_function_pod_logs "ns3-$id"
+#
+#    echo $response | grep -i "a: 1 b: {c: 3, d: 4}" || (log "response a: 1 b: {c: 3, d: 4} not received" &&
+#    cleanup python-builder-env-1 "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"  && exit 1)
+
+     echo $response | grep -i "a: 1 b: {c: 3, d: 4}" || (log "response a: 1 b: {c: 3, d: 4} not received" &&
+    cleanup "" "" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"  && exit 1)
 
     # verify the function specialized pod is in ns1-$id. This also verifies builder ran successfully and in ns1-$id
-    verify_function_pod_ns func3 "ns1-$id" || (log "func func3 not specialized in ns1-$id" &&
-    cleanup python-builder-env "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id" && exit 1)
+#    verify_function_pod_ns func3 "ns1-$id" || (log "func func3 not specialized in ns1-$id" &&
+#    cleanup python-builder-env-1 "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id" && exit 1)
 
-    cleanup python-builder-env "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"
+    verify_function_pod_ns func3 "ns1-$id" || (log "func func3 not specialized in ns1-$id" &&
+    cleanup "" "" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id" && exit 1)
+
+    cleanup "" "" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"
+
+    #cleanup python-builder-env-1 "ns1-$id" func3 "ns2-$id" "$pkg" "ns2-$id" $ht "ns2-$id"
 }
 
 pool_mgr_test_2() {
