@@ -263,7 +263,8 @@ func (fetcher *Fetcher) Fetch(req FetchRequest) (int, error) {
 				return 500, errors.New("Something wrong, pkg is nil")
 			}
 
-			if pkg.Status.BuildStatus != fission.BuildStatusSucceeded {
+			if pkg.Status.BuildStatus != fission.BuildStatusSucceeded &&
+				pkg.Status.BuildStatus != fission.BuildStatusNone {
 				e := fmt.Sprintf("Build status for the function's pkg : %s.%s is : %s, can't fetch deployment", pkg.Metadata.Name, pkg.Metadata.Namespace, pkg.Status.BuildStatus)
 				log.Printf(e)
 				return 500, errors.New(e)
