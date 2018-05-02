@@ -258,6 +258,11 @@ func (fetcher *Fetcher) Fetch(req FetchRequest) (int, error) {
 			// this results in executor sending a fetch request of type FETCH_DEPLOYMENT and since pkg.Spec.Deployment.Url will be empty,
 			// we hit this "Get : unsupported protocol scheme "" error.
 			// it may be useful to the user if we can send a more meaningful error in such a scenario.
+			if pkg == nil {
+				log.Printf("Something wrong, pkg is nil")
+				return 500, errors.New("Something wrong, pkg is nil")
+			}
+
 			if pkg.Status.BuildStatus != fission.BuildStatusSucceeded {
 				e := fmt.Sprintf("Build status for the function's pkg : %s.%s is : %s, can't fetch deployment", pkg.Metadata.Name, pkg.Metadata.Namespace, pkg.Status.BuildStatus)
 				log.Printf(e)
